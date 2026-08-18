@@ -164,10 +164,30 @@ cmd_fork() {
   echo "$target"
 }
 
+# `mode` is not a palette color -- cmd_set refuses it -- but flipping a fork
+# from dark to light is theme authoring, so it gets its own verb with the
+# same surgical-edit discipline. It drives GTK's prefer-dark and friends
+# through the regeneration that apply_theme runs.
+cmd_mode() {
+  local value=${1:-} slug target
+  slug=$(current_slug)
+
+  if [[ -z $value ]]; then
+    grep -oP '^mode\s*=\s*"\K[^"]*' "$(source_colors "$slug")" || echo "dark"
+    return 0
+  fi
+
+  [[ $value == light || $value == dark ]] || die "mode must be 'light' or 'dark'"
+  target=$(writable_colors "$slug")
+  edit_keys "$target" mode "$value"
+  apply_theme "$slug"
+}
+
 case ${1:-} in
 show) shift; cmd_show "$@" ;;
 set) shift; cmd_set "$@" ;;
 reset) shift; cmd_reset "$@" ;;
+mode) shift; cmd_mode "$@" ;;
 fork) shift; cmd_fork "$@" ;;
 *)
   cat >&2 <<'USAGE'
@@ -175,12 +195,14 @@ Usage:
   omatheme-palette show
   omatheme-palette set --<key> <#rrggbb>...
   omatheme-palette reset [--<key>...|--all]
+  omatheme-palette mode [light|dark]
   omatheme-palette fork <new-slug>
 
 Keys are the color entries of the current theme's colors.toml, e.g.
---accent, --background, --red. `mode` and the hyprland_* border keys are
-not palette colors. reset restores stock values (stock themes only);
-fork copies the current theme to ~/.config/omarchy/themes/<new-slug>/.
+--accent, --background, --red. The hyprland_* border keys are not
+palette colors (omatheme-border owns them); `mode` has its own verb.
+reset restores stock values (stock themes only); fork copies the
+current theme to ~/.config/omarchy/themes/<new-slug>/.
 USAGE
   exit 1
   ;;

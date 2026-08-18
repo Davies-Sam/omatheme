@@ -152,7 +152,7 @@ switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
 
 ## Task 2 — Light/dark mode
 
-- [ ] **2a. `mode` on `omatheme-palette`.** `mode` prints the current value;
+- [x] **2a. `mode` on `omatheme-palette`.** `mode` prints the current value;
       `mode light|dark` rewrites only that line (byte-identical round trip,
       same editing discipline as the color keys) and applies the theme.
       Other values are refused.
