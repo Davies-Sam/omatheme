@@ -29,8 +29,7 @@ ShellRoot {
     { key: "bg", label: "Backgrounds", source: "Panels/BackgroundsPanel.qml" }
   ]
 
-  property string panel: "border"  // ------------------------------------------------------- session state
-  Process {
+  property string panel: "border"  Process {
     id: session
     command: ["omatheme-state"]
     stdout: StdioCollector {

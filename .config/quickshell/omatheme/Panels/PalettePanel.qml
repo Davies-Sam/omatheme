@@ -157,6 +157,30 @@ ColumnLayout {
     previewer.running = true
   }
 
+  // Publishing prints its next steps (gh command, install one-liner) on
+  // stdout; that is the deliverable, so it lands in the panel verbatim.
+  property string publishOutput: ""
+
+  Process {
+    id: publisher
+    command: ["omatheme-publish"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.publishOutput = text.trim()
+    }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.forkError = text.trim()
+    }
+  }
+
+  function publish() {
+    if (publisher.running) return
+    root.forkError = ""
+    root.publishOutput = ""
+    publisher.running = true
+  }
+
   function fork(slug) {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return
     forker.command = ["bash", "-c",
@@ -322,7 +346,24 @@ ColumnLayout {
       onClicked: root.regenPreviews()
     }
 
+    TextButton {
+      label: "Publish…"
+      enabled: !root.hasStock
+      onClicked: root.publish()
+    }
+
     Item { Layout.fillWidth: true }
+  }
+
+  Text {
+    Layout.fillWidth: true
+    visible: root.publishOutput.length > 0
+    textFormat: Text.PlainText
+    text: root.publishOutput
+    color: Theme.dim
+    font.family: Theme.fontFamily
+    font.pixelSize: Theme.size(10)
+    wrapMode: Text.WrapAnywhere
   }
 
   Text {

@@ -210,7 +210,7 @@ the wrong face in Omarchy's theme switcher forever.
       **Done when:** fork → publish → `omarchy theme install <path-or-url>`
       of the produced repo installs a working duplicate theme (local clone
       is fine for the test; clean up the duplicate after).
-- [ ] **5b. UI hook.** A "Publish…" action next to the fork row that runs
+- [x] **5b. UI hook.** A "Publish…" action next to the fork row that runs
       the helper and surfaces its output (the printed next steps) in the
       panel — the same pattern as forkError, but for stdout.
       **Done when:** the flow is reachable from the GUI and the output is
