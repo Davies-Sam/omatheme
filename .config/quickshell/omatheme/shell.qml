@@ -142,13 +142,26 @@ ShellRoot {
     readonly property int roomHeight: screen ? screen.height - Theme.size(70) : Theme.size(566)
 
     implicitWidth: Math.min(Theme.size(460), roomWidth)
-    implicitHeight: Math.min(Theme.size(566), roomHeight)
+
+    // Height follows the content. A fixed cap left the panels' bottom
+    // action rows just past the fold -- reaching Apply took a scroll.
+    // Chrome is the column margins, the header, the switcher and two
+    // spacings; the stack contributes its tallest panel (not the current
+    // one, or the window would jump on every tab switch). The screen
+    // still wins, and the Flickable scrolls in whatever will not fit.
+    readonly property real contentNeed: 36 + headerRow.implicitHeight
+      + switcher.implicitHeight + 2 * Theme.gap + panelStack.tallestImplicit
+    implicitHeight: Math.min(Math.max(Theme.size(566), Math.ceil(contentNeed)),
+                             roomHeight)
 
     // The floor has to yield to the screen as well, or it re-inflates the
     // window past the clamp above at large text scales.
     minimumSize: Qt.size(Math.min(Theme.size(420), roomWidth),
                          Math.min(Theme.size(520), roomHeight))
 
+    // Growth is automatic, but Qt ignores a smaller implicit size once the
+    // compositor has committed one -- shrinking goes through the resizer.
+    onImplicitHeightChanged: refit.restart()
     onVisibleChanged: if (!visible) Quickshell.quit()
 
     Item {
@@ -163,6 +176,7 @@ ShellRoot {
         spacing: Theme.gap
 
         RowLayout {
+          id: headerRow
           spacing: 8
           Layout.fillWidth: true
 
@@ -209,6 +223,7 @@ ShellRoot {
         // One panel needs no switcher; the strip appears as soon as a second
         // one is registered above.
         Segmented {
+          id: switcher
           visible: root.panels.length > 1
           options: root.panels.map(entry => ({ key: entry.key, label: entry.label }))
           current: root.panel
@@ -251,6 +266,19 @@ ShellRoot {
               const loader = panelRepeater.itemAt(currentIndex)
               if (!loader) return 0
               return loader.item?.implicitHeight ?? loader.implicitHeight
+            }
+            // The tallest panel, for the window's own height (see
+            // contentNeed above). itemAt() needs the same reactive-read
+            // discipline as currentImplicit; the per-item implicitHeight
+            // reads keep this current as panels populate.
+            readonly property real tallestImplicit: {
+              let tallest = 0
+              for (let i = 0; i < panelRepeater.count; i++) {
+                const loader = panelRepeater.itemAt(i)
+                const h = loader?.item?.implicitHeight ?? 0
+                if (h > tallest) tallest = h
+              }
+              return tallest
             }
             // The content gets its full implicit height -- no "squeeze
             // tolerance". An earlier version subtracted a small slack on the

@@ -22,11 +22,10 @@ RowLayout {
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
-    // The column is fixed; a label wider than it must elide rather than
-    // paint into the track.
-    elide: Text.ElideRight
-    Layout.preferredWidth: Theme.size(34)
-    Layout.maximumWidth: Theme.size(34)
+    // Readable beats aligned: the column fits every current label so the
+    // tracks line up, and a label that outgrows it takes the width it
+    // needs instead of truncating -- "Unfo..." helps nobody.
+    Layout.preferredWidth: Math.max(Theme.size(50), implicitWidth)
   }
 
   Item {
