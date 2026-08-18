@@ -1,0 +1,184 @@
+#!/bin/bash
+
+# Omatheme's palette domain: read and write the color keys of the current
+# theme's colors.toml, and fork the theme into a new editable copy. Each
+# panel in the app gets a helper like this, so every change the GUI can make
+# is also reachable from a shell.
+#
+# The palette is every `key = "#rrggbb"` entry in colors.toml. `mode` and the
+# hyprland_* border keys live in the same file but are not palette colors --
+# the borders belong to omatheme-border -- so this helper refuses to touch
+# them. Edits are surgical line replacements: a set/reset round trip leaves
+# the file byte-identical.
+#
+# Applying goes through `omarchy theme set`, which regenerates 20+ files: the
+# right thing for a Preview/Apply button, far too slow for live-on-drag.
+
+set -euo pipefail
+
+source "$(dirname "$0")/omatheme-lib"
+
+is_palette_key() {
+  [[ $1 != mode && $1 != hyprland_* ]]
+}
+
+# Rewrite the named keys' values in place. A key that is not in the file is
+# an error -- the palette edits what a theme defines, it does not grow it.
+edit_keys() {
+  python3 - "$@" <<'PY'
+import re
+import sys
+
+path, *pairs = sys.argv[1:]
+with open(path) as handle:
+    text = handle.read()
+
+missing = []
+for i in range(0, len(pairs), 2):
+    key, value = pairs[i], pairs[i + 1]
+    pattern = re.compile(rf'^({re.escape(key)}\s*=\s*)"[^"]*"', re.M)
+    text, count = pattern.subn(rf'\g<1>"{value}"', text, count=1)
+    if not count:
+        missing.append(key)
+
+if missing:
+    print(f"no such key in this theme: {', '.join(missing)}", file=sys.stderr)
+    sys.exit(1)
+
+with open(path, 'w') as handle:
+    handle.write(text)
+PY
+}
+
+cmd_show() {
+  local slug source
+  slug=$(current_slug)
+  source=$(source_colors "$slug")
+
+  python3 - "$slug" "$source" "$USER_THEMES" <<'PY'
+import json
+import re
+import sys
+
+slug, source, user_themes = sys.argv[1:4]
+
+colors = {}
+with open(source) as handle:
+    for line in handle:
+        match = re.match(r'^(\w+)\s*=\s*"(#[0-9a-fA-F]{6,8})"', line.strip())
+        if match and match.group(1) != 'mode' and not match.group(1).startswith('hyprland_'):
+            colors[match.group(1)] = match.group(2)
+
+print(json.dumps({
+    "slug": slug,
+    "editable": source.startswith(user_themes),
+    "colors": colors,
+}))
+PY
+}
+
+cmd_set() {
+  local slug target key
+  local -a edits=()
+
+  while (($#)); do
+    [[ $1 == --* ]] || die "expected --<key>, got '$1'"
+    key=${1#--}
+    key=${key//-/_}
+    is_palette_key "$key" || die "'$key' is not a palette color"
+    [[ ${2:-} =~ ^#[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$ ]] || die "--$key needs a #rrggbb value"
+    edits+=("$key" "$2")
+    shift 2
+  done
+
+  ((${#edits[@]})) || die "set needs at least one --<key> <hex>"
+
+  slug=$(current_slug)
+  target=$(writable_colors "$slug")
+  edit_keys "$target" "${edits[@]}"
+  apply_theme "$slug"
+  echo "$target"
+}
+
+cmd_reset() {
+  local slug stock target key
+  local -a edits=()
+
+  slug=$(current_slug)
+  stock="$OMARCHY/themes/$slug/colors.toml"
+  [[ -f $stock ]] || die "theme '$slug' has no stock copy to reset to"
+
+  # Nothing to reset if the theme was never overlaid.
+  [[ -f $USER_THEMES/$slug/colors.toml ]] || { apply_theme "$slug"; return 0; }
+  target="$USER_THEMES/$slug/colors.toml"
+
+  local -a keys=()
+  if (($# == 0)) || [[ $1 == --all ]]; then
+    # Every palette key the stock file defines.
+    while IFS= read -r key; do keys+=("$key"); done < <(
+      grep -oP '^\w+(?=\s*=\s*"#[0-9a-fA-F]{6,8}")' "$stock" | grep -v '^mode$' | grep -v '^hyprland_' || true
+    )
+  else
+    while (($#)); do
+      [[ $1 == --* ]] || die "expected --<key>, got '$1'"
+      key=${1#--}
+      key=${key//-/_}
+      is_palette_key "$key" || die "'$key' is not a palette color"
+      keys+=("$key")
+      shift
+    done
+  fi
+
+  for key in "${keys[@]}"; do
+    local value
+    value=$(grep -oP "^${key}\s*=\s*\"\K[^\"]*" "$stock" | head -1)
+    [[ $value ]] || die "stock theme has no key '$key'"
+    edits+=("$key" "$value")
+  done
+
+  ((${#edits[@]})) && edit_keys "$target" "${edits[@]}"
+  apply_theme "$slug"
+}
+
+cmd_fork() {
+  local new=${1:-} slug stock user target
+  [[ $new ]] || die "fork needs a new theme slug"
+  [[ $new =~ ^[a-z0-9][a-z0-9-]*$ ]] || die "slug must be lowercase letters, digits and dashes"
+
+  slug=$(current_slug)
+  target="$USER_THEMES/$new"
+  [[ -e $target ]] && die "theme '$new' already exists"
+
+  stock="$OMARCHY/themes/$slug"
+  user="$USER_THEMES/$slug"
+  [[ -d $stock || -d $user ]] || die "theme '$slug' has no files to fork"
+
+  # Layer the copy the way Omarchy resolves the theme itself: stock files
+  # first, then whatever the user has overlaid on top.
+  mkdir -p "$target"
+  [[ -d $stock ]] && cp -r "$stock/." "$target/"
+  [[ -d $user ]] && cp -r "$user/." "$target/"
+  echo "$target"
+}
+
+case ${1:-} in
+show) shift; cmd_show "$@" ;;
+set) shift; cmd_set "$@" ;;
+reset) shift; cmd_reset "$@" ;;
+fork) shift; cmd_fork "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omatheme-palette show
+  omatheme-palette set --<key> <#rrggbb>...
+  omatheme-palette reset [--<key>...|--all]
+  omatheme-palette fork <new-slug>
+
+Keys are the color entries of the current theme's colors.toml, e.g.
+--accent, --background, --red. `mode` and the hyprland_* border keys are
+not palette colors. reset restores stock values (stock themes only);
+fork copies the current theme to ~/.config/omarchy/themes/<new-slug>/.
+USAGE
+  exit 1
+  ;;
+esac

@@ -17,48 +17,11 @@
 
 set -euo pipefail
 
-OMARCHY="${OMARCHY_PATH:-/usr/share/omarchy}"
-STATE="$HOME/.local/state/omarchy/current"
-USER_THEMES="$HOME/.config/omarchy/themes"
+source "$(dirname "$0")/omatheme-lib"
 
 # The template's own fallbacks, so `show` reports what is actually on screen
 # rather than an empty string when a theme sets no border of its own.
 DEFAULT_INACTIVE="rgba(595959aa)"
-
-die() {
-  echo "omatheme-border: $1" >&2
-  exit 1
-}
-
-current_slug() {
-  [[ -r $STATE/theme.name ]] || die "no current theme (is Omarchy set up?)"
-  tr -d '[:space:]' <"$STATE/theme.name"
-}
-
-# The file the current theme's colors are read from, preferring a user theme
-# or an existing overlay over the stock copy.
-source_colors() {
-  local slug=$1
-  if [[ -f $USER_THEMES/$slug/colors.toml ]]; then
-    echo "$USER_THEMES/$slug/colors.toml"
-  elif [[ -f $OMARCHY/themes/$slug/colors.toml ]]; then
-    echo "$OMARCHY/themes/$slug/colors.toml"
-  else
-    die "theme '$slug' has no colors.toml"
-  fi
-}
-
-# Where a write has to land. Creating the overlay copies the stock palette so
-# the theme keeps rendering identically apart from the border being set.
-writable_colors() {
-  local slug=$1 target="$USER_THEMES/$slug/colors.toml"
-  if [[ ! -f $target ]]; then
-    [[ -f $OMARCHY/themes/$slug/colors.toml ]] || die "theme '$slug' has no colors.toml"
-    mkdir -p "$USER_THEMES/$slug"
-    cp "$OMARCHY/themes/$slug/colors.toml" "$target"
-  fi
-  echo "$target"
-}
 
 edit_keys() {
   python3 - "$@" <<'PY'
@@ -108,10 +71,6 @@ except OSError:
 match = re.search(rf'^{re.escape(key)}\s*=\s*"([^"]*)"', text, re.M)
 print(match.group(1) if match else '')
 PY
-}
-
-apply_theme() {
-  omarchy theme set "$1" >/dev/null
 }
 
 cmd_show() {

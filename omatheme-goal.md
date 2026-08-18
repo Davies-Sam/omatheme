@@ -136,7 +136,7 @@ Controls: `general.border_size`, `decoration.rounding`, `general.gaps_in`,
 Editing the ~28 keys of the active theme's `colors.toml`. This is what makes
 the app a theme designer rather than a border tool.
 
-- [ ] **2a. `omatheme-palette` helper.** `show`, `set --<key> <hex>...`,
+- [x] **2a. `omatheme-palette` helper.** `show`, `set --<key> <hex>...`,
       `reset [--key ...|--all]`, and `fork <new-slug>` copying the current
       theme to `~/.config/omarchy/themes/<new-slug>/`. Reuse the overlay logic
       already in `omatheme-border` (`writable_colors`) rather than

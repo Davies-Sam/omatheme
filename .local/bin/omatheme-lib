@@ -1,0 +1,51 @@
+# omatheme-lib -- shared plumbing for the omatheme-* domain helpers.
+# Sourced, not executed: each helper starts with
+#   source "$(dirname "$0")/omatheme-lib"
+#
+# Everything here is about locating the current theme and writing to it
+# safely. Stock themes are never edited in place: a write is redirected to
+# ~/.config/omarchy/themes/<slug>/, which is Omarchy's documented overlay --
+# the stock files are laid down first and the user's win on top.
+
+OMARCHY="${OMARCHY_PATH:-/usr/share/omarchy}"
+STATE="$HOME/.local/state/omarchy/current"
+USER_THEMES="$HOME/.config/omarchy/themes"
+
+die() {
+  echo "${0##*/}: $1" >&2
+  exit 1
+}
+
+current_slug() {
+  [[ -r $STATE/theme.name ]] || die "no current theme (is Omarchy set up?)"
+  tr -d '[:space:]' <"$STATE/theme.name"
+}
+
+# The file the current theme's colors are read from, preferring a user theme
+# or an existing overlay over the stock copy.
+source_colors() {
+  local slug=$1
+  if [[ -f $USER_THEMES/$slug/colors.toml ]]; then
+    echo "$USER_THEMES/$slug/colors.toml"
+  elif [[ -f $OMARCHY/themes/$slug/colors.toml ]]; then
+    echo "$OMARCHY/themes/$slug/colors.toml"
+  else
+    die "theme '$slug' has no colors.toml"
+  fi
+}
+
+# Where a write has to land. Creating the overlay copies the stock palette so
+# the theme keeps rendering identically apart from the key being edited.
+writable_colors() {
+  local slug=$1 target="$USER_THEMES/$slug/colors.toml"
+  if [[ ! -f $target ]]; then
+    [[ -f $OMARCHY/themes/$slug/colors.toml ]] || die "theme '$slug' has no colors.toml"
+    mkdir -p "$USER_THEMES/$slug"
+    cp "$OMARCHY/themes/$slug/colors.toml" "$target"
+  fi
+  echo "$target"
+}
+
+apply_theme() {
+  omarchy theme set "$1" >/dev/null
+}
