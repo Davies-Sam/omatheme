@@ -247,15 +247,14 @@ ShellRoot {
               if (!loader) return 0
               return loader.item ? loader.item.implicitHeight : loader.implicitHeight
             }
-            // Panels squeeze gracefully by up to this much -- the preview
-            // mocks give up height first -- and past it the content keeps
-            // its height and scrolls. A fixed floor instead of the slack
-            // would cap contentHeight and hide anything taller than the
-            // floor with no way to scroll to it.
-            readonly property real squeezeSlack: Theme.size(30)
-
+            // The content gets its full implicit height -- no "squeeze
+            // tolerance". An earlier version subtracted a small slack on the
+            // theory that panels compress gracefully; that only holds for
+            // panels with yielding content (the Border mocks), and for a
+            // panel of fixed-height rows it pushed the bottom action row
+            // permanently past max scroll.
             width: panelFlick.width
-            height: Math.max(panelFlick.height, currentImplicit - squeezeSlack)
+            height: Math.max(panelFlick.height, currentImplicit)
             currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
 
             Repeater {
