@@ -125,7 +125,7 @@ task is ticked.
 Curating the theme's background *set* is authoring and belongs here; the
 switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
 
-- [ ] **1a. `omatheme-bg` helper.** `list` (JSON: every background from both
+- [x] **1a. `omatheme-bg` helper.** `list` (JSON: every background from both
       resolution paths with absolute path and which one is current),
       `add <path-or-url>` (curl for http(s) URLs, copy for files; validate
       the extension against the allowed list; for a user-owned theme the

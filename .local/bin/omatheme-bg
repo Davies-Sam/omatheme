@@ -1,0 +1,176 @@
+#!/bin/bash
+
+# Omatheme's backgrounds domain: curate the set of backgrounds the current
+# theme ships. Switching between them is Omarchy's job (`omarchy theme bg
+# next` / the background switcher); this helper only changes what there is
+# to switch between, so a forked theme can carry its own wallpapers when it
+# is published.
+#
+# Omarchy resolves backgrounds from two places (see omarchy-theme-bg-next):
+# the *generated copy* of the theme at ~/.local/state/omarchy/current/theme/
+# backgrounds/ -- rebuilt by `omarchy theme set`/`refresh`, so edits to a
+# theme's source dir are invisible until a refresh -- and a per-theme user
+# overlay at ~/.config/omarchy/backgrounds/<slug>/, which is scanned live.
+# Adds therefore land in the theme's own backgrounds/ (followed by a
+# refresh) when the theme is user-owned, so publishing carries them, and in
+# the live overlay for stock themes, which are never edited in place.
+
+set -euo pipefail
+
+source "$(dirname "$0")/omatheme-lib"
+
+STATE_THEME="$STATE/theme"
+STATE_BG_LINK="$STATE/background"
+
+# User-owned means the theme's home is the user dir -- not merely an overlay
+# of a stock theme.
+theme_owned() {
+  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
+}
+
+user_bg_dir() {
+  echo "$HOME/.config/omarchy/backgrounds/$1"
+}
+
+valid_ext() {
+  [[ ${1,,} =~ \.(jpg|jpeg|png|gif|bmp|webp)$ ]]
+}
+
+# The state copy lags the source dirs; rebuild it when a source changed,
+# and refresh the switcher thumbnails either way.
+resync() {
+  local touched_source=$1
+  [[ $touched_source == yes ]] && omarchy theme refresh >/dev/null
+  omarchy theme bg cache >/dev/null 2>&1 || true
+}
+
+cmd_list() {
+  local slug owned
+  slug=$(current_slug)
+  owned=no
+  theme_owned "$slug" && owned=yes
+
+  python3 - "$(user_bg_dir "$slug")" "$STATE_THEME/backgrounds" "$STATE_BG_LINK" "$owned" <<'PY'
+import json
+import os
+import sys
+
+user_dir, theme_dir, bg_link, owned = sys.argv[1:5]
+exts = ('.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp')
+
+try:
+    current = os.readlink(bg_link)
+except OSError:
+    current = ''
+
+entries = []
+for source, directory in (("user", user_dir), ("theme", theme_dir)):
+    if not os.path.isdir(directory):
+        continue
+    for name in sorted(os.listdir(directory)):
+        path = os.path.join(directory, name)
+        if not os.path.isfile(path) or not name.lower().endswith(exts):
+            continue
+        entries.append({
+            "name": name,
+            "path": path,
+            "source": source,
+            # user-overlay files are always ours; theme files only when the
+            # theme itself is user-owned (removal edits the source dir).
+            "removable": source == "user" or owned == "yes",
+            "current": path == current,
+        })
+
+print(json.dumps({"owned": owned == "yes", "backgrounds": entries}))
+PY
+}
+
+cmd_add() {
+  local arg=${1:-} slug dest_dir name dest
+  [[ $arg ]] || die "add needs a file path or an http(s) URL"
+
+  slug=$(current_slug)
+  if theme_owned "$slug"; then
+    dest_dir="$USER_THEMES/$slug/backgrounds"
+  else
+    dest_dir=$(user_bg_dir "$slug")
+  fi
+  mkdir -p "$dest_dir"
+
+  if [[ $arg =~ ^https?:// ]]; then
+    name=$(basename "${arg%%\?*}")
+    name=${name%%#*}
+    valid_ext "$name" || die "URL must point at an image file (jpg/jpeg/png/gif/bmp/webp)"
+    dest="$dest_dir/$name"
+    [[ -e $dest ]] && die "'$name' already exists in this theme"
+    curl -fsSL --max-time 120 -o "$dest" "$arg" || { rm -f "$dest"; die "download failed"; }
+  else
+    [[ -f $arg ]] || die "no such file '$arg'"
+    name=$(basename "$arg")
+    valid_ext "$name" || die "'$name' is not an image (jpg/jpeg/png/gif/bmp/webp)"
+    dest="$dest_dir/$name"
+    [[ -e $dest ]] && die "'$name' already exists in this theme"
+    cp "$arg" "$dest"
+  fi
+
+  if theme_owned "$slug"; then resync yes; else resync no; fi
+  echo "$dest"
+}
+
+cmd_remove() {
+  local name=${1:-} slug
+  [[ $name ]] || die "remove needs a background filename"
+  name=$(basename "$name")
+
+  slug=$(current_slug)
+  if [[ -f $(user_bg_dir "$slug")/$name ]]; then
+    rm "$(user_bg_dir "$slug")/$name"
+    resync no
+  elif theme_owned "$slug" && [[ -f $USER_THEMES/$slug/backgrounds/$name ]]; then
+    rm "$USER_THEMES/$slug/backgrounds/$name"
+    resync yes
+  elif [[ -f $STATE_THEME/backgrounds/$name ]]; then
+    die "'$name' is shipped by the stock theme; fork the theme to change its set"
+  else
+    die "no such background '$name'"
+  fi
+}
+
+cmd_set() {
+  local name=${1:-} slug path
+  [[ $name ]] || die "set needs a background filename"
+  name=$(basename "$name")
+
+  slug=$(current_slug)
+  if [[ -f $(user_bg_dir "$slug")/$name ]]; then
+    path="$(user_bg_dir "$slug")/$name"
+  elif [[ -f $STATE_THEME/backgrounds/$name ]]; then
+    path="$STATE_THEME/backgrounds/$name"
+  else
+    die "no such background '$name'"
+  fi
+
+  omarchy theme bg set "$path"
+}
+
+case ${1:-} in
+list) shift; cmd_list "$@" ;;
+add) shift; cmd_add "$@" ;;
+remove) shift; cmd_remove "$@" ;;
+set) shift; cmd_set "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omatheme-bg list
+  omatheme-bg add <path-or-url>
+  omatheme-bg remove <filename>
+  omatheme-bg set <filename>
+
+Adds land in the theme's own backgrounds/ for user-owned themes (so a
+published fork carries them) and in ~/.config/omarchy/backgrounds/<slug>/
+for stock themes. Switching between backgrounds stays with
+`omarchy theme bg next` and the background switcher.
+USAGE
+  exit 1
+  ;;
+esac
