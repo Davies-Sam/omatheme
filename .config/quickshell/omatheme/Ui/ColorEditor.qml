@@ -9,6 +9,9 @@ ColumnLayout {
 
   property color value: "#ffffff"
   property real alpha: 1.0
+  // Palette colors are plain #rrggbb; hide the alpha row where it has no
+  // meaning rather than letting it edit a channel that is thrown away.
+  property bool showAlpha: true
   signal changed(color value, real alpha)
 
   spacing: 10
@@ -88,6 +91,7 @@ ColumnLayout {
 
   LabeledSlider {
     Layout.fillWidth: true
+    visible: root.showAlpha
     label: "Alpha"
     value: root.alpha
     readout: Math.round(root.alpha * 100) + "%"

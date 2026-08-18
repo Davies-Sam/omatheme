@@ -22,7 +22,8 @@ ShellRoot {
 
   readonly property var panels: [
     { key: "border", label: "Border", source: "Panels/BorderPanel.qml" },
-    { key: "window", label: "Window", source: "Panels/WindowPanel.qml" }
+    { key: "window", label: "Window", source: "Panels/WindowPanel.qml" },
+    { key: "palette", label: "Palette", source: "Panels/PalettePanel.qml" }
   ]
 
   property string panel: "border"

@@ -145,7 +145,7 @@ the app a theme designer rather than a border tool.
       **Done when:** editing a stock theme creates an overlay instead of
       touching `/usr/share/omarchy`; `omarchy theme list` shows a forked
       theme; a round trip leaves `colors.toml` byte-identical.
-- [ ] **2b. `Panels/PalettePanel.qml`.** A swatch grid over the palette keys,
+- [x] **2b. `Panels/PalettePanel.qml`.** A swatch grid over the palette keys,
       reusing `ColorEditor` for the selected one. Because applying is a full
       `omarchy theme set`, use an explicit **Preview** button rather than
       live-on-drag, and say so in the UI.

@@ -55,12 +55,13 @@ cmd_show() {
   slug=$(current_slug)
   source=$(source_colors "$slug")
 
-  python3 - "$slug" "$source" "$USER_THEMES" <<'PY'
+  python3 - "$slug" "$source" "$USER_THEMES" "$OMARCHY" <<'PY'
 import json
+import os
 import re
 import sys
 
-slug, source, user_themes = sys.argv[1:4]
+slug, source, user_themes, omarchy = sys.argv[1:5]
 
 colors = {}
 with open(source) as handle:
@@ -72,6 +73,8 @@ with open(source) as handle:
 print(json.dumps({
     "slug": slug,
     "editable": source.startswith(user_themes),
+    # Whether `reset` has a stock copy to fall back on.
+    "stock": os.path.isfile(os.path.join(omarchy, "themes", slug, "colors.toml")),
     "colors": colors,
 }))
 PY
