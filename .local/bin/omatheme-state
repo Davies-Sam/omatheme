@@ -1,0 +1,62 @@
+#!/bin/bash
+
+# Omatheme's shared session state: which theme is current, whether it can be
+# written to directly, and the tokens the app paints itself with.
+#
+# Every panel needs this, and only this -- anything panel-specific belongs in
+# that panel's own helper (omatheme-border, and its future siblings).
+
+set -euo pipefail
+
+OMARCHY="${OMARCHY_PATH:-/usr/share/omarchy}"
+STATE="$HOME/.local/state/omarchy/current"
+USER_THEMES="$HOME/.config/omarchy/themes"
+
+[[ -r $STATE/theme.name ]] || {
+  echo "omatheme-state: no current theme" >&2
+  exit 1
+}
+
+slug=$(tr -d '[:space:]' <"$STATE/theme.name")
+
+if [[ -f $USER_THEMES/$slug/colors.toml ]]; then
+  source_file="$USER_THEMES/$slug/colors.toml"
+elif [[ -f $OMARCHY/themes/$slug/colors.toml ]]; then
+  source_file="$OMARCHY/themes/$slug/colors.toml"
+else
+  echo "omatheme-state: theme '$slug' has no colors.toml" >&2
+  exit 1
+fi
+
+font=$(omarchy font current 2>/dev/null || true)
+scale=$(gsettings get org.gnome.desktop.interface text-scaling-factor 2>/dev/null || true)
+
+python3 - "$slug" "$source_file" "$USER_THEMES" "$font" "$scale" <<'PY'
+import json
+import re
+import sys
+
+slug, source, user_themes, font = sys.argv[1:5]
+try:
+    text_scale = min(3.0, max(0.5, float(sys.argv[5])))
+except (IndexError, ValueError):
+    text_scale = 1.0
+
+palette = {}
+with open(source) as handle:
+    for line in handle:
+        match = re.match(r'^(\w+)\s*=\s*"([^"]*)"', line.strip())
+        if match:
+            palette[match.group(1)] = match.group(2)
+
+print(json.dumps({
+    "slug": slug,
+    "name": re.sub(r'(^|-)([a-z])', lambda m: m.group(1) + m.group(2).upper(), slug).replace('-', ' '),
+    # False means writing goes through a freshly created user overlay.
+    "editable": source.startswith(user_themes),
+    "path": source,
+    "font": font,
+    "textScale": text_scale,
+    "palette": palette,
+}))
+PY

@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Read and write the current Omarchy theme's window-border colors.
+# Omatheme's border domain: read and write the current theme's window-border
+# colors. Each panel in the app gets its own helper like this, so every change
+# the GUI can make is also reachable from a shell.
 #
 # Quattro derives every border from the active theme's colors.toml
 # (`hyprland_active_border` / `hyprland_inactive_border`), falling back to a
@@ -24,7 +26,7 @@ USER_THEMES="$HOME/.config/omarchy/themes"
 DEFAULT_INACTIVE="rgba(595959aa)"
 
 die() {
-  echo "omaborder-theme: $1" >&2
+  echo "omatheme-border: $1" >&2
   exit 1
 }
 
@@ -119,46 +121,28 @@ cmd_show() {
   active=$(read_key "$source" hyprland_active_border)
   inactive=$(read_key "$source" hyprland_inactive_border)
 
-  local font scale
-  font=$(omarchy font current 2>/dev/null || true)
-  # `omarchy display text size` drives GNOME's text-scaling-factor; honour it
-  # the way omacalc does so the app grows with the rest of the desktop.
-  scale=$(gsettings get org.gnome.desktop.interface text-scaling-factor 2>/dev/null || true)
-
-  python3 - "$slug" "$source" "$active" "$inactive" "$DEFAULT_INACTIVE" "$USER_THEMES" "$font" "$scale" <<'PY'
+  python3 - "$source" "$active" "$inactive" "$DEFAULT_INACTIVE" <<'PY'
 import json
 import re
 import sys
 
-slug, source, active, inactive, default_inactive, user_themes = sys.argv[1:7]
-font = sys.argv[7] if len(sys.argv) > 7 else ""
-try:
-    text_scale = min(3.0, max(0.5, float(sys.argv[8])))
-except (IndexError, ValueError):
-    text_scale = 1.0
+source, active, inactive, default_inactive = sys.argv[1:5]
 
-palette = {}
+accent = ""
 with open(source) as handle:
     for line in handle:
-        match = re.match(r'^(\w+)\s*=\s*"([^"]*)"', line.strip())
+        match = re.match(r'^accent\s*=\s*"([^"]*)"', line.strip())
         if match:
-            palette[match.group(1)] = match.group(2)
+            accent = match.group(1)
+            break
 
 print(json.dumps({
-    "slug": slug,
-    "name": re.sub(r'(^|-)([a-z])', lambda m: m.group(1) + m.group(2).upper(), slug).replace('-', ' '),
-    "editable": source.startswith(user_themes),
-    "path": source,
-    # An unset border falls back the way the theme template does, so the app
-    # opens showing what is really on screen.
-    "active": active or palette.get("accent", "#ffffff"),
+    # An unset border falls back the way the theme template does, so callers
+    # see what is really on screen rather than an empty string.
+    "active": active or accent or "#ffffff",
     "inactive": inactive or default_inactive,
     "activeSet": bool(active),
     "inactiveSet": bool(inactive),
-    "palette": palette,
-    # The app paints itself in the desktop's configured font, not a guess.
-    "font": font,
-    "textScale": text_scale,
 }))
 PY
 }
@@ -213,9 +197,9 @@ reset) shift; cmd_reset "$@" ;;
 *)
   cat >&2 <<'USAGE'
 Usage:
-  omaborder-theme show
-  omaborder-theme set --active <spec> [--inactive <spec>]
-  omaborder-theme reset [--active|--inactive|--all]
+  omatheme-border show
+  omatheme-border set --active <spec> [--inactive <spec>]
+  omatheme-border reset [--active|--inactive|--all]
 
 <spec> is a Hyprland color or gradient, e.g.
   "rgba(7aa2f7ff)"

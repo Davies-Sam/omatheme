@@ -1,12 +1,12 @@
 [Desktop Entry]
 Type=Application
-Name=Omaborder
-GenericName=Window border designer
-Comment=Design the window border gradient for the current theme
-Exec=omaborder
+Name=Omatheme
+GenericName=Theme designer
+Comment=Design the current Omarchy theme's appearance
+Exec=omatheme
 Icon=preferences-desktop-theme
 Terminal=false
 Categories=Utility;Settings;DesktopSettings;
-Keywords=border;window;gradient;color;theme;hyprland;
+Keywords=theme;border;window;gradient;color;palette;hyprland;
 # No StartupWMClass: every Quickshell process reports org.quickshell, so
 # claiming it here would also claim omarchy-shell's own surfaces.
