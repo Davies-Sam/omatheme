@@ -124,7 +124,7 @@ Controls: `general.border_size`, `decoration.rounding`, `general.gaps_in`,
       is `hyprctl reload`.
       **Done when:** dragging a slider changes the compositor immediately;
       Apply survives `hyprctl reload`; Revert restores without writing.
-- [ ] **1c. Register it.** Add one entry to `panels` in `shell.qml`. The
+- [x] **1c. Register it.** Add one entry to `panels` in `shell.qml`. The
       switcher reveals itself automatically at two panels.
       **Done when:** both tabs render, switching preserves each panel's
       unsaved state, and a full-screen capture at

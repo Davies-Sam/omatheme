@@ -21,16 +21,11 @@ ShellRoot {
   id: root
 
   readonly property var panels: [
-    { key: "border", label: "Border", source: "Panels/BorderPanel.qml" }
+    { key: "border", label: "Border", source: "Panels/BorderPanel.qml" },
+    { key: "window", label: "Window", source: "Panels/WindowPanel.qml" }
   ]
 
   property string panel: "border"
-
-  function sourceFor(key) {
-    for (var i = 0; i < panels.length; i++)
-      if (panels[i].key === key) return panels[i].source
-    return panels.length > 0 ? panels[0].source : ""
-  }
 
   // ------------------------------------------------------- session state
   Process {
@@ -190,10 +185,21 @@ ShellRoot {
           onSelected: key => root.panel = key
         }
 
-        Loader {
+        // Every panel is instantiated once and kept alive; a Loader whose
+        // source follows the switcher would destroy a panel's unsaved edits
+        // the moment you tab away from it.
+        StackLayout {
           Layout.fillWidth: true
           Layout.fillHeight: true
-          source: root.sourceFor(root.panel)
+          currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
+
+          Repeater {
+            model: root.panels
+            Loader {
+              required property var modelData
+              source: modelData.source
+            }
+          }
         }
       }
     }
