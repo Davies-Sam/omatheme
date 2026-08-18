@@ -189,16 +189,38 @@ ShellRoot {
         // Every panel is instantiated once and kept alive; a Loader whose
         // source follows the switcher would destroy a panel's unsaved edits
         // the moment you tab away from it.
-        StackLayout {
+        //
+        // The stack lives in a Flickable because the window clamps to the
+        // screen: at a large text scale on a short display the content would
+        // otherwise be squeezed until controls disappear. With room to spare
+        // the stack fills the viewport and nothing moves; short of room, it
+        // keeps its natural height and scrolls.
+        Flickable {
+          id: panelFlick
+
           Layout.fillWidth: true
           Layout.fillHeight: true
-          currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
+          clip: true
+          contentWidth: width
+          contentHeight: panelStack.height
+          boundsBehavior: Flickable.StopAtBounds
 
-          Repeater {
-            model: root.panels
-            Loader {
-              required property var modelData
-              source: modelData.source
+          StackLayout {
+            id: panelStack
+            width: panelFlick.width
+            // Panels are allowed to squeeze a little -- the preview mocks
+            // give up height gracefully -- but below this floor controls
+            // start disappearing, so the stack stops shrinking there and the
+            // remainder scrolls instead.
+            height: Math.max(panelFlick.height, Theme.size(440))
+            currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
+
+            Repeater {
+              model: root.panels
+              Loader {
+                required property var modelData
+                source: modelData.source
+              }
             }
           }
         }

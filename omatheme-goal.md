@@ -159,7 +159,7 @@ the app a theme designer rather than a border tool.
 
 ## Task 3 — Polish
 
-- [ ] **3a. Scroll container.** Above roughly 1.5× text scale on a short
+- [x] **3a. Scroll container.** Above roughly 1.5× text scale on a short
       screen the panel content is squeezed and the Border panel's preview
       mocks vanish. Wrap panel content so it scrolls instead.
       **Done when:** at text scale 2.0 every control is reachable and the
