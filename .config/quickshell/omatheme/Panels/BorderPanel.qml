@@ -193,6 +193,15 @@ ColumnLayout {
     root.dirty = false
   }
 
+  // Border colors live in colors.toml, so any reload -- a palette apply,
+  // or an external theme switch spotted by the shell's state watch --
+  // can move them. After this panel's own applies the loader is already
+  // running, so the extra nudge is a no-op.
+  Connections {
+    target: Session
+    function onReloaded() { loader.running = true }
+  }
+
   Component.onCompleted: loader.running = true
 
   // ------------------------------------------------------------------- ui

@@ -98,6 +98,35 @@ ShellRoot {
     }
   }
 
+  // ----------------------------------------------------- external changes
+  //
+  // The theme can change under the app: SUPER+SHIFT+CTRL+SPACE, `omarchy
+  // theme bg next`, a helper run from a terminal. Omarchy churns
+  // ~/.local/state/omarchy/current/ on every apply (symlinks repointed,
+  // next-theme regenerated), so one watch there catches them all, and the
+  // panels that show theme-owned state re-read on Session.reloaded. The
+  // Window panel deliberately does not: looknfeel.lua is not theme-owned,
+  // and reloading it would discard un-applied slider edits every time a
+  // palette preview fires. A theme set rewrites 20+ files, so events
+  // coalesce through the debounce; stdbuf for the same reason as the
+  // gsettings monitor above.
+  Process {
+    id: stateWatch
+    command: ["stdbuf", "-oL", "inotifywait", "-m", "-q",
+              "-e", "create,moved_to,delete,modify",
+              Quickshell.env("HOME") + "/.local/state/omarchy/current"]
+    running: true
+    stdout: SplitParser {
+      onRead: () => externalChange.restart()
+    }
+  }
+
+  Timer {
+    id: externalChange
+    interval: 400
+    onTriggered: Session.reloaded()
+  }
+
   // Qt only ever grows a mapped floating window -- a smaller implicit size is
   // ignored once the compositor has committed one -- so ask Hyprland for the
   // exact size instead, the way omarchy-launch-about sizes the About window.

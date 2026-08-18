@@ -234,6 +234,11 @@ ColumnLayout {
       }
       root.edits = next
     }
+    // Any reload -- another panel's apply, or an external theme switch
+    // spotted by the shell's state watch -- means the palette on disk may
+    // have changed under the swatches. After this panel's own applies the
+    // loader is already running, so the extra nudge is a no-op.
+    function onReloaded() { loader.running = true }
   }
 
   Component.onCompleted: loader.running = true

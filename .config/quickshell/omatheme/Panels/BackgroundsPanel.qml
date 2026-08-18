@@ -128,6 +128,15 @@ ColumnLayout {
     generator.running = true
   }
 
+  // The background set is theme-scoped, so a reload -- most importantly an
+  // external theme switch spotted by the shell's state watch -- swaps the
+  // whole grid. After this panel's own actions the loader is already
+  // running, so the extra nudge is a no-op.
+  Connections {
+    target: Session
+    function onReloaded() { loader.running = true }
+  }
+
   Component.onCompleted: loader.running = true
 
   // ------------------------------------------------------------------- ui
