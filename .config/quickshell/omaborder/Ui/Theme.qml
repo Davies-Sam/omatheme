@@ -23,8 +23,17 @@ QtObject {
   readonly property color accent: value("accent", "#7aa2f7")
   readonly property color selection: value("selection", "#33467c")
 
-  readonly property int radius: 8
-  readonly property int gap: 14
+  // GNOME's text-scaling-factor, as set by `omarchy display text size`.
+  // Every size in the app goes through size(), so the whole window grows
+  // with it rather than the text alone overflowing fixed chrome.
+  property real textScale: 1.0
+
+  function size(value) {
+    return Math.round(value * root.textScale)
+  }
+
+  readonly property int radius: size(8)
+  readonly property int gap: size(14)
   // Set from `omarchy font current` so the app matches the rest of the
   // desktop rather than pinning a family that may not even be installed.
   property string fontFamily: "monospace"

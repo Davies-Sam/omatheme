@@ -29,8 +29,8 @@ ColumnLayout {
     spacing: 10
 
     Rectangle {
-      Layout.preferredWidth: 30
-      Layout.preferredHeight: 30
+      Layout.preferredWidth: Theme.size(30)
+      Layout.preferredHeight: Theme.size(30)
       radius: Theme.radius
       color: root.value
       border.width: 1

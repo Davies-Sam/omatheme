@@ -116,6 +116,7 @@ ShellRoot {
       var state = JSON.parse(json)
       Theme.colors = state.palette || ({})
       if (state.font) Theme.fontFamily = state.font
+      if (state.textScale) Theme.textScale = state.textScale
       root.themeName = state.name || "Unknown"
       root.themeEditable = state.editable !== false
       root.active = parseSpec(state.active, root.active)
@@ -130,6 +131,51 @@ ShellRoot {
 
   Process { id: applier }
   Process { id: reverter; command: ["hyprctl", "reload"] }
+
+  // Qt only ever grows a mapped floating window -- a smaller implicit size is
+  // ignored once the compositor has committed one -- so ask Hyprland for the
+  // exact size instead, the way omarchy-launch-about sizes the About window.
+  Process { id: resizer }
+
+  Timer {
+    id: refit
+    interval: 120
+    onTriggered: {
+      resizer.command = ["hyprctl", "dispatch",
+        'hl.dsp.window.resize({ window = "title:Omaborder", x = ' + window.implicitWidth +
+        ', y = ' + window.implicitHeight + ' })']
+      resizer.running = true
+    }
+  }
+
+  Connections {
+    target: Theme
+    function onTextScaleChanged() { refit.restart() }
+  }
+
+  // `omarchy display text size` writes GNOME's text-scaling-factor. dconf
+  // exposes no signal Quickshell can subscribe to (`gsettings monitor` never
+  // delivered a line through a parser), so poll it the way omarchy-shell
+  // polls hyprctl -- cheap, and only while the window is open.
+  Process {
+    id: scaleProbe
+    command: ["gsettings", "get", "org.gnome.desktop.interface", "text-scaling-factor"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var parsed = parseFloat(String(text).trim())
+        if (!isNaN(parsed) && parsed > 0)
+          Theme.textScale = Math.min(3, Math.max(0.5, parsed))
+      }
+    }
+  }
+
+  Timer {
+    id: scaleTimer
+    interval: 2000
+    repeat: true
+    onTriggered: scaleProbe.running = true
+  }
 
   // Repainting the compositor on every slider pixel is wasteful; one frame of
   // coalescing is imperceptible and keeps hyprctl calls down.
@@ -175,16 +221,29 @@ ShellRoot {
     onTriggered: loader.running = true
   }
 
-  Component.onCompleted: loader.running = true
+  Component.onCompleted: { loader.running = true; scaleTimer.start() }
 
   // ------------------------------------------------------------------ ui
   FloatingWindow {
     id: window
 
     title: "Omaborder"
-    implicitWidth: 460
-    implicitHeight: 566
-    minimumSize: Qt.size(420, 520)
+    // Both track Theme.textScale, so the window grows and shrinks with
+    // `omarchy display text size` while it is open. Setting width/height
+    // directly is deprecated in Quickshell and pins the window instead.
+    // Cap growth to the screen. Quickshell's ScreenInfo knows nothing about
+    // the bar's reserved strip, so leave a scale-aware allowance for it --
+    // otherwise a large text scale grows the window under the bar and off
+    // the bottom of the display.
+    readonly property int roomWidth: screen ? screen.width - Theme.size(40) : Theme.size(460)
+    readonly property int roomHeight: screen ? screen.height - Theme.size(70) : Theme.size(566)
+
+    implicitWidth: Math.min(Theme.size(460), roomWidth)
+    implicitHeight: Math.min(Theme.size(566), roomHeight)
+    // The floor has to yield to the screen as well, or it re-inflates the
+    // window past the clamp above at large text scales.
+    minimumSize: Qt.size(Math.min(Theme.size(420), roomWidth),
+                         Math.min(Theme.size(520), roomHeight))
     color: Theme.background
 
     onVisibleChanged: if (!visible) Quickshell.quit()
@@ -209,15 +268,15 @@ ShellRoot {
             text: "Window border"
             color: Theme.foreground
             font.family: Theme.fontFamily
-            font.pixelSize: 17
+            font.pixelSize: Theme.size(17)
             font.bold: true
           }
 
           Item { Layout.fillWidth: true }
 
           Rectangle {
-            implicitWidth: themeLabel.implicitWidth + 18
-            implicitHeight: 24
+            implicitWidth: themeLabel.implicitWidth + Theme.size(18)
+            implicitHeight: Theme.size(24)
             radius: Theme.radius
             color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
 
@@ -227,7 +286,7 @@ ShellRoot {
               text: root.themeName
               color: Theme.accent
               font.family: Theme.fontFamily
-              font.pixelSize: 11
+              font.pixelSize: Theme.size(11)
             }
           }
         }
@@ -235,8 +294,8 @@ ShellRoot {
         // ---- preview / target picker
         RowLayout {
           Layout.fillWidth: true
-          Layout.preferredHeight: 112
-          Layout.maximumHeight: 112
+          Layout.preferredHeight: Theme.size(112)
+          Layout.maximumHeight: Theme.size(112)
           spacing: 12
 
           BorderPreview {
@@ -316,7 +375,7 @@ ShellRoot {
           text: "Applying creates a user overlay for this stock theme."
           color: Theme.dim
           font.family: Theme.fontFamily
-          font.pixelSize: 11
+          font.pixelSize: Theme.size(11)
           wrapMode: Text.WordWrap
         }
 

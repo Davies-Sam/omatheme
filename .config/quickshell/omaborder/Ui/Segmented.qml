@@ -10,8 +10,8 @@ Rectangle {
   property string current: ""
   signal selected(string key)
 
-  implicitHeight: 30
-  implicitWidth: row.implicitWidth + 8
+  implicitHeight: Theme.size(30)
+  implicitWidth: row.implicitWidth + Theme.size(8)
   radius: Theme.radius
   color: Qt.rgba(Theme.sunken.r, Theme.sunken.g, Theme.sunken.b, 0.8)
   border.width: 1
@@ -42,7 +42,7 @@ Rectangle {
           text: parent.modelData.label
           color: parent.modelData.key === root.current ? Theme.foreground : Theme.dim
           font.family: Theme.fontFamily
-          font.pixelSize: 12
+          font.pixelSize: Theme.size(12)
         }
 
         MouseArea {

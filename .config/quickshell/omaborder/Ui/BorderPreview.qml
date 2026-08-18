@@ -52,13 +52,13 @@ Rectangle {
         text: root.caption
         color: root.selected ? Theme.foreground : Theme.dim
         font.family: Theme.fontFamily
-        font.pixelSize: 12
+        font.pixelSize: Theme.size(12)
       }
 
       Rectangle {
         anchors.horizontalCenter: parent.horizontalCenter
-        width: 22
-        height: 2
+        width: Theme.size(22)
+        height: Theme.size(2)
         radius: 1
         opacity: root.selected ? 1 : 0
         color: Theme.accent

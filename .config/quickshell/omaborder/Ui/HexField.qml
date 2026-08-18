@@ -10,8 +10,8 @@ Rectangle {
   property string value: "#000000"
   signal edited(string hex)
 
-  implicitWidth: 104
-  implicitHeight: 30
+  implicitWidth: Theme.size(104)
+  implicitHeight: Theme.size(30)
   radius: Theme.radius
   color: Qt.rgba(Theme.sunken.r, Theme.sunken.g, Theme.sunken.b, 0.8)
   border.width: 1
@@ -27,7 +27,7 @@ Rectangle {
     verticalAlignment: TextInput.AlignVCenter
     color: Theme.foreground
     font.family: Theme.fontFamily
-    font.pixelSize: 13
+    font.pixelSize: Theme.size(13)
     selectByMouse: true
     selectionColor: Theme.selection
     maximumLength: 7

@@ -9,8 +9,8 @@ Rectangle {
   property bool enabled: true
   signal clicked()
 
-  implicitWidth: text.implicitWidth + 28
-  implicitHeight: 32
+  implicitWidth: text.implicitWidth + Theme.size(28)
+  implicitHeight: Theme.size(32)
   radius: Theme.radius
   opacity: root.enabled ? 1 : 0.4
 
@@ -30,7 +30,7 @@ Rectangle {
     text: root.label
     color: root.primary ? Theme.accent : Theme.foreground
     font.family: Theme.fontFamily
-    font.pixelSize: 13
+    font.pixelSize: Theme.size(13)
   }
 
   MouseArea {
