@@ -140,7 +140,7 @@ switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
       `list` marks the current background; `remove` deletes only
       user-writable files; a stock theme's `/usr/share` dir is untouched
       throughout.
-- [ ] **1b. `Panels/BackgroundsPanel.qml`.** A thumbnail grid over `list`
+- [x] **1b. `Panels/BackgroundsPanel.qml`.** A thumbnail grid over `list`
       (Images with `sourceSize` capped and `asynchronous: true`), click to
       `set`, a `Field` + Add button accepting a path or URL (reuse the
       Field component), and a remove action for the selected background

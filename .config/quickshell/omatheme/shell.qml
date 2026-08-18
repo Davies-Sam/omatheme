@@ -25,7 +25,8 @@ ShellRoot {
   readonly property var panels: [
     { key: "border", label: "Border", source: "Panels/BorderPanel.qml" },
     { key: "window", label: "Window", source: "Panels/WindowPanel.qml" },
-    { key: "palette", label: "Palette", source: "Panels/PalettePanel.qml" }
+    { key: "palette", label: "Palette", source: "Panels/PalettePanel.qml" },
+    { key: "bg", label: "Backgrounds", source: "Panels/BackgroundsPanel.qml" }
   ]
 
   property string panel: "border"
@@ -256,7 +257,6 @@ ShellRoot {
             currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
 
             Repeater {
-              id: panelRepeater
               model: root.panels
               Loader {
                 id: panelLoader
