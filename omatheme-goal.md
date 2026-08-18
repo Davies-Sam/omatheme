@@ -152,7 +152,7 @@ the app a theme designer rather than a border tool.
       **Done when:** picking a swatch edits that key, Preview re-themes the
       desktop, and the app itself re-skins (it paints from the theme it edits,
       so this is a good self-test).
-- [ ] **2c. Fork flow.** Somewhere to name and save a copy, so a stock theme
+- [x] **2c. Fork flow.** Somewhere to name and save a copy, so a stock theme
       can be used as a starting point without an overlay accumulating edits.
       **Done when:** fork, edit, and `omarchy theme set <new-slug>` all work
       end to end.

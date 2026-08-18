@@ -67,6 +67,29 @@ ColumnLayout {
 
   Process { id: applier }
 
+  // Fork copies the current theme and switches to the copy, so a stock theme
+  // can be a starting point without its overlay accumulating edits. The slug
+  // is validated to [a-z0-9-] before it gets near a shell.
+  Process {
+    id: forker
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        root.forkError = text.trim()
+        settle.restart()
+      }
+    }
+  }
+
+  property string forkError: ""
+
+  function fork(slug) {
+    if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return
+    forker.command = ["bash", "-c",
+      'omatheme-palette fork "$1" && omarchy theme set "$1"', "fork", slug]
+    forker.running = true
+  }
+
   // `omarchy theme set` regenerates and reloads config; re-read once it has.
   Timer {
     id: settle
@@ -163,6 +186,62 @@ ColumnLayout {
   }
 
   Item { Layout.fillHeight: true }
+
+  RowLayout {
+    Layout.fillWidth: true
+    spacing: 8
+
+    Rectangle {
+      Layout.fillWidth: true
+      implicitHeight: Theme.size(30)
+      radius: Theme.radius
+      color: Qt.rgba(Theme.sunken.r, Theme.sunken.g, Theme.sunken.b, 0.8)
+      border.width: 1
+      border.color: forkName.activeFocus
+        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7)
+        : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.15)
+
+      TextInput {
+        id: forkName
+        anchors.fill: parent
+        anchors.leftMargin: 10
+        anchors.rightMargin: 10
+        verticalAlignment: TextInput.AlignVCenter
+        color: Theme.foreground
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.size(13)
+        selectByMouse: true
+        selectionColor: Theme.selection
+        maximumLength: 40
+      }
+
+      Text {
+        visible: forkName.text.length === 0 && !forkName.activeFocus
+        anchors.fill: forkName
+        verticalAlignment: Text.AlignVCenter
+        text: "new-theme-name"
+        color: Theme.dim
+        font.family: Theme.fontFamily
+        font.pixelSize: Theme.size(13)
+      }
+    }
+
+    TextButton {
+      label: "Fork"
+      enabled: /^[a-z0-9][a-z0-9-]*$/.test(forkName.text)
+      onClicked: { root.fork(forkName.text); forkName.text = "" }
+    }
+  }
+
+  Text {
+    Layout.fillWidth: true
+    visible: root.forkError.length > 0
+    text: root.forkError
+    color: Theme.value("red", "#f7768e")
+    font.family: Theme.fontFamily
+    font.pixelSize: Theme.size(11)
+    wrapMode: Text.WordWrap
+  }
 
   Text {
     Layout.fillWidth: true
