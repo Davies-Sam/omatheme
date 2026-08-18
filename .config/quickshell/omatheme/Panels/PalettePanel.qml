@@ -162,7 +162,7 @@ ColumnLayout {
         border.width: root.selected === swatch.modelData ? 2 : 1
         border.color: root.selected === swatch.modelData
           ? Theme.accent
-          : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.25)
+          : Theme.hairlineStrong
 
         // A pending, un-previewed edit gets a marker so it can be spotted
         // after tabbing around the grid.
@@ -209,39 +209,11 @@ ColumnLayout {
     Layout.fillWidth: true
     spacing: 8
 
-    Rectangle {
+    Field {
+      id: forkName
       Layout.fillWidth: true
-      implicitHeight: Theme.size(30)
-      radius: Theme.radius
-      color: Qt.rgba(Theme.sunken.r, Theme.sunken.g, Theme.sunken.b, 0.8)
-      border.width: 1
-      border.color: forkName.activeFocus
-        ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7)
-        : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.15)
-
-      TextInput {
-        id: forkName
-        anchors.fill: parent
-        anchors.leftMargin: 10
-        anchors.rightMargin: 10
-        verticalAlignment: TextInput.AlignVCenter
-        color: Theme.foreground
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.size(13)
-        selectByMouse: true
-        selectionColor: Theme.selection
-        maximumLength: 40
-      }
-
-      Text {
-        visible: forkName.text.length === 0 && !forkName.activeFocus
-        anchors.fill: forkName
-        verticalAlignment: Text.AlignVCenter
-        text: "new-theme-name"
-        color: Theme.dim
-        font.family: Theme.fontFamily
-        font.pixelSize: Theme.size(13)
-      }
+      placeholder: "new-theme-name"
+      maximumLength: 40
     }
 
     TextButton {

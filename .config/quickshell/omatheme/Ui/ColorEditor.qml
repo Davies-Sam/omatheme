@@ -49,7 +49,7 @@ ColumnLayout {
       radius: Theme.radius
       color: root.value
       border.width: 1
-      border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.25)
+      border.color: Theme.hairlineStrong
     }
 
     HexField {
@@ -111,8 +111,8 @@ ColumnLayout {
     value: root.alpha
     readout: Math.round(root.alpha * 100) + "%"
     trackStops: [
-      GradientStop { position: 0.0; color: Qt.rgba(root.value.r, root.value.g, root.value.b, 0) },
-      GradientStop { position: 1.0; color: Qt.rgba(root.value.r, root.value.g, root.value.b, 1) }
+      GradientStop { position: 0.0; color: Qt.alpha(root.value, 0) },
+      GradientStop { position: 1.0; color: Qt.alpha(root.value, 1) }
     ]
     onMoved: v => root.changed(root.value, v)
   }

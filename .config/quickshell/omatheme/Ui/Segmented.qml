@@ -15,9 +15,9 @@ Rectangle {
   implicitHeight: Theme.size(30)
   implicitWidth: row.implicitWidth + Theme.size(8)
   radius: Theme.radius
-  color: Qt.rgba(Theme.sunken.r, Theme.sunken.g, Theme.sunken.b, 0.8)
+  color: Theme.fieldFill
   border.width: 1
-  border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.15)
+  border.color: Theme.hairline
 
   RowLayout {
     id: row
@@ -42,8 +42,8 @@ Rectangle {
         implicitHeight: segmentLabel.implicitHeight + Theme.size(8)
         radius: Theme.radius - 2
         color: segment.modelData.key === root.current
-          ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.22)
-          : (segmentArea.containsMouse ? Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.08) : "transparent")
+          ? Qt.alpha(Theme.accent, 0.22)
+          : (segmentArea.containsMouse ? Qt.alpha(Theme.foreground, 0.08) : "transparent")
 
         Behavior on color { ColorAnimation { duration: 90 } }
 

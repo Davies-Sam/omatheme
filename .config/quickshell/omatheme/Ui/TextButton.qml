@@ -17,12 +17,12 @@ Rectangle {
   opacity: root.enabled ? 1 : 0.4
 
   color: root.primary
-    ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, area.containsMouse ? 0.30 : 0.20)
-    : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, area.containsMouse ? 0.12 : 0.06)
+    ? Qt.alpha(Theme.accent, area.containsMouse ? 0.30 : 0.20)
+    : Qt.alpha(Theme.foreground, area.containsMouse ? 0.12 : 0.06)
   border.width: 1
   border.color: root.primary
-    ? Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.7)
-    : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.25)
+    ? Theme.focusRing
+    : Theme.hairlineStrong
 
   Behavior on color { ColorAnimation { duration: 90 } }
 

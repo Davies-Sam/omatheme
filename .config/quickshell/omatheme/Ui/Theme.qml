@@ -23,6 +23,13 @@ QtObject {
   readonly property color accent: value("accent", "#7aa2f7")
   readonly property color selection: value("selection", "#33467c")
 
+  // The recurring tint vocabulary, named once: hairlines around fields and
+  // swatches, sunken field fills, and the ring on a focused field.
+  readonly property color hairline: Qt.alpha(foreground, 0.15)
+  readonly property color hairlineStrong: Qt.alpha(foreground, 0.25)
+  readonly property color fieldFill: Qt.alpha(sunken, 0.8)
+  readonly property color focusRing: Qt.alpha(accent, 0.7)
+
   // GNOME's text-scaling-factor, as set by `omarchy display text size`.
   // Every size in the app goes through size(), so the whole window grows
   // with it rather than the text alone overflowing fixed chrome.

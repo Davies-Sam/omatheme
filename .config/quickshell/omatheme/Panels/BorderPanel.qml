@@ -206,8 +206,8 @@ ColumnLayout {
       Layout.fillWidth: true
       Layout.fillHeight: true
       caption: "Focused"
-      colorA: Qt.rgba(Qt.color(root.active.a).r, Qt.color(root.active.a).g, Qt.color(root.active.a).b, root.active.aAlpha)
-      colorB: Qt.rgba(Qt.color(root.active.b).r, Qt.color(root.active.b).g, Qt.color(root.active.b).b, root.active.bAlpha)
+      colorA: Qt.alpha(root.active.a, root.active.aAlpha)
+      colorB: Qt.alpha(root.active.b, root.active.bAlpha)
       twoStop: root.active.gradient
       angle: root.active.angle
       selected: root.editing === "active"
@@ -218,8 +218,8 @@ ColumnLayout {
       Layout.fillWidth: true
       Layout.fillHeight: true
       caption: "Unfocused"
-      colorA: Qt.rgba(Qt.color(root.inactive.a).r, Qt.color(root.inactive.a).g, Qt.color(root.inactive.a).b, root.inactive.aAlpha)
-      colorB: Qt.rgba(Qt.color(root.inactive.b).r, Qt.color(root.inactive.b).g, Qt.color(root.inactive.b).b, root.inactive.bAlpha)
+      colorA: Qt.alpha(root.inactive.a, root.inactive.aAlpha)
+      colorB: Qt.alpha(root.inactive.b, root.inactive.bAlpha)
       twoStop: root.inactive.gradient
       angle: root.inactive.angle
       selected: root.editing === "inactive"

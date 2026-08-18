@@ -63,28 +63,37 @@ ShellRoot {
 
   // --------------------------------------------------------- text scaling
   //
-  // `omarchy display text size` writes GNOME's text-scaling-factor. dconf
-  // exposes no signal Quickshell can subscribe to (`gsettings monitor` never
-  // delivered a line through a parser), so poll it the way omarchy-shell
-  // polls hyprctl -- cheap, and only while the window is open.
+  // `omarchy display text size` writes GNOME's text-scaling-factor. A plain
+  // `gsettings monitor` block-buffers its stdout when piped -- lines sit in
+  // a 4K buffer and never reach a parser, which once made polling look like
+  // the only option -- so stdbuf forces line buffering and every change
+  // arrives the moment it is made. monitor only reports changes, so one
+  // initial `get` seeds the value.
+  function applyScale(raw) {
+    var match = /[\d.]+\s*$/.exec(String(raw))
+    if (!match) return
+    var parsed = parseFloat(match[0])
+    if (!isNaN(parsed) && parsed > 0)
+      Theme.textScale = Math.min(3, Math.max(0.5, parsed))
+  }
+
   Process {
     id: scaleProbe
     command: ["gsettings", "get", "org.gnome.desktop.interface", "text-scaling-factor"]
     stdout: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        var parsed = parseFloat(String(text).trim())
-        if (!isNaN(parsed) && parsed > 0)
-          Theme.textScale = Math.min(3, Math.max(0.5, parsed))
-      }
+      onStreamFinished: root.applyScale(text)
     }
   }
 
-  Timer {
-    id: scaleTimer
-    interval: 2000
-    repeat: true
-    onTriggered: scaleProbe.running = true
+  Process {
+    id: scaleWatch
+    command: ["stdbuf", "-oL", "gsettings", "monitor",
+              "org.gnome.desktop.interface", "text-scaling-factor"]
+    running: true
+    stdout: SplitParser {
+      onRead: line => root.applyScale(line)
+    }
   }
 
   // Qt only ever grows a mapped floating window -- a smaller implicit size is
@@ -114,7 +123,7 @@ ShellRoot {
     function onTextScaleChanged() { refit.restart() }
   }
 
-  Component.onCompleted: { session.running = true; scaleTimer.start() }
+  Component.onCompleted: { session.running = true; scaleProbe.running = true }
 
   // ------------------------------------------------------------------- ui
   FloatingWindow {
@@ -156,9 +165,7 @@ ShellRoot {
           spacing: 8
 
           Text {
-            text: root.panels.length > 1
-              ? "Omatheme"
-              : root.panels[0].label === "Border" ? "Window border" : root.panels[0].label
+            text: "Omatheme"
             color: Theme.foreground
             font.family: Theme.fontFamily
             font.pixelSize: Theme.size(17)
@@ -174,7 +181,7 @@ ShellRoot {
             implicitWidth: themeLabel.implicitWidth + Theme.size(18)
             implicitHeight: Theme.size(24)
             radius: Theme.radius
-            color: Qt.rgba(Theme.accent.r, Theme.accent.g, Theme.accent.b, 0.15)
+            color: Qt.alpha(Theme.accent, 0.15)
 
             Text {
               id: themeLabel

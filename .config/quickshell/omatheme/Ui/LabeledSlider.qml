@@ -39,7 +39,7 @@ RowLayout {
       width: parent.width
       height: Theme.size(8)
       radius: height / 2
-      color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.12)
+      color: Qt.alpha(Theme.foreground, 0.12)
 
       // A horizontal gradient needs an explicit rotation; without stops the
       // flat fill above shows through.
