@@ -15,8 +15,50 @@ set -euo pipefail
 
 source "$(dirname "$0")/omatheme-lib"
 
-theme_owned() {
-  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
+# A fork copies files that carry its parent's identity. The ones the tool
+# can regenerate (previews, boot logo) or should drop (pins) get pointed at
+# their fix; editor configs are inherited by design and only get flagged.
+# Warn-only: publishing a half-dressed theme is allowed, just not silently.
+cmd_check() {
+  local slug=${1:-} dir file base fix root other match
+  [[ $slug ]] || slug=$(current_slug)
+  theme_owned "$slug" || die "theme '$slug' is a stock theme; fork it first (omatheme-palette fork <new-slug>)"
+  dir="$USER_THEMES/$slug"
+
+  local warned=no
+  shopt -s nullglob
+  for file in "$dir"/preview.png "$dir"/preview-unlock.png "$dir"/unlock.png \
+    "$dir"/shell.*.toml "$dir"/keyboard.rgb "$dir"/neovim.lua "$dir"/vscode.json; do
+    [[ -f $file ]] || continue
+    base=${file##*/}
+    [[ $base == shell.toml ]] && continue
+
+    # "Inherited" means byte-identical to any other installed theme's copy
+    # -- the same test omatheme-preview show applies to previews.
+    match=""
+    for root in "$OMARCHY/themes" "$USER_THEMES"; do
+      for other in "$root"/*/; do
+        [[ ${other%/} == "$dir" ]] && continue
+        if cmp -s "$file" "$other$base"; then
+          match=$(basename "$other")
+          break 2
+        fi
+      done
+    done
+    [[ $match ]] || continue
+
+    case $base in
+    preview.png | preview-unlock.png) fix="regenerate previews (omatheme-preview regen)" ;;
+    unlock.png) fix="render this theme's own boot logo (omatheme-preview logo)" ;;
+    keyboard.rgb | shell.*.toml) fix="drop the inherited pin (omatheme-palette unpin)" ;;
+    *) fix="edit by hand -- editor colorschemes are inherited, not generated" ;;
+    esac
+    echo "warning: $base is still $match's copy -- $fix"
+    warned=yes
+  done
+
+  [[ $warned == no ]] && echo "check: nothing inherited -- every flagged file is this theme's own"
+  return 0
 }
 
 cmd_publish() {
@@ -54,6 +96,10 @@ cmd_publish() {
     git -C "$dir" push -q -u origin HEAD
   fi
 
+  # The preflight runs on every publish so a theme that still wears its
+  # parent's face says so right next to the sharing instructions.
+  cmd_check "$slug"
+
   echo "Theme '$slug' is committed at $dir"
   if [[ $push_url ]]; then
     echo "Pushed to $push_url"
@@ -70,14 +116,19 @@ cmd_publish() {
 case ${1:-} in
 publish | "") shift $(($# > 0 ? 1 : 0)); cmd_publish "$@" ;;
 --push) cmd_publish "$@" ;;
+check) shift; cmd_check "$@" ;;
 *)
   cat >&2 <<'USAGE'
 Usage:
   omatheme-publish [--push <remote-url>]
+  omatheme-publish check
 
 Commits the current user-owned theme's directory as a git repo and prints
 the steps to share it; --push also sets origin and pushes. Installing the
 result is Omarchy's job: omarchy theme install <url>.
+check warns for each file still byte-identical to another theme's copy
+(previews, boot logo, pins, editor configs) and names the fix; publish
+runs it automatically.
 USAGE
   exit 1
   ;;

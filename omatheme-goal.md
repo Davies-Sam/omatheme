@@ -346,7 +346,7 @@ synchronization (see the milestone 3 facts above).
 Publish currently says nothing about how much of the parent's identity a
 fork still carries.
 
-- [ ] **10a. `check` on `omatheme-publish`,** also run automatically before
+- [x] **10a. `check` on `omatheme-publish`,** also run automatically before
       publish prints its next steps: compare the fork against its parent
       and warn for each inherited file that is still byte-identical and
       carries the parent's face — `preview.png`, `preview-unlock.png`,
