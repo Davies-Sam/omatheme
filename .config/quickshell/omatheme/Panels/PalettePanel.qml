@@ -1,3 +1,5 @@
+pragma ComponentBehavior: Bound
+
 import QtQuick
 import QtQuick.Layouts
 import Quickshell
@@ -21,9 +23,10 @@ ColumnLayout {
   property var keys: []
   property string selected: ""
   property bool hasStock: false
-  property int editCount: 0
 
-  readonly property bool dirty: editCount > 0
+  // `edits` is only ever replaced wholesale, so this re-evaluates on every
+  // change without a hand-synchronized counter to drift out of step.
+  readonly property bool dirty: Object.keys(edits).length > 0
 
   spacing: Theme.gap
 
@@ -37,7 +40,6 @@ ColumnLayout {
     if (hex === root.colors[key]) delete next[key]
     else next[key] = hex
     root.edits = next
-    root.editCount = Object.keys(next).length
   }
 
   // ------------------------------------------------------------ processes
@@ -57,7 +59,6 @@ ColumnLayout {
       root.keys = Object.keys(root.colors)
       root.hasStock = state.stock === true
       root.edits = ({})
-      root.editCount = 0
       if (root.keys.indexOf(root.selected) < 0)
         root.selected = root.keys.length > 0 ? root.keys[0] : ""
     } catch (error) {
@@ -130,14 +131,12 @@ ColumnLayout {
 
   function revert() {
     root.edits = ({})
-    root.editCount = 0
     loader.running = true
   }
 
   function resetToStock() {
     runApplier(["omatheme-palette", "reset", "--all"])
     root.edits = ({})
-    root.editCount = 0
   }
 
   Component.onCompleted: loader.running = true
@@ -152,21 +151,23 @@ ColumnLayout {
     Repeater {
       model: root.keys
       Rectangle {
+        id: swatch
+
         required property string modelData
 
         Layout.fillWidth: true
         Layout.preferredHeight: Theme.size(30)
         radius: Theme.radius
-        color: root.valueOf(modelData)
-        border.width: root.selected === modelData ? 2 : 1
-        border.color: root.selected === modelData
+        color: root.valueOf(swatch.modelData)
+        border.width: root.selected === swatch.modelData ? 2 : 1
+        border.color: root.selected === swatch.modelData
           ? Theme.accent
           : Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.25)
 
         // A pending, un-previewed edit gets a marker so it can be spotted
         // after tabbing around the grid.
         Rectangle {
-          visible: root.edits[parent.modelData] !== undefined
+          visible: root.edits[swatch.modelData] !== undefined
           width: Theme.size(6)
           height: width
           radius: width / 2
@@ -179,7 +180,7 @@ ColumnLayout {
         MouseArea {
           anchors.fill: parent
           cursorShape: Qt.PointingHandCursor
-          onClicked: root.selected = parent.modelData
+          onClicked: root.selected = swatch.modelData
         }
       }
     }
