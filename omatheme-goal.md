@@ -403,7 +403,7 @@ session (or a loop) can verify without reinventing it.
       **Done when:** the README renders with images on GitHub (relative
       paths, check after pushing), and the launcher's failure message is
       verified by hiding one dependency from PATH.
-- [ ] **12c. Go public.** A final pass over the repo for anything private
+- [x] **12c. Go public.** A final pass over the repo for anything private
       (no secrets, no personal paths in docs), then **stop and ask** —
       flipping `gh repo edit Davies-Sam/omatheme --visibility public` and
       any "PR into Omarchy" follow-up is Sam's call, not the loop's.
