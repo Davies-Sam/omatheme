@@ -30,7 +30,6 @@ ShellRoot {
   ]
 
   property string panel: "border"
-
   // ------------------------------------------------------- session state
   Process {
     id: session

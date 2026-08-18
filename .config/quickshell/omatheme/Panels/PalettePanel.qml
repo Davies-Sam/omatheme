@@ -50,7 +50,7 @@ ColumnLayout {
   // need to read against the foreground; everything else against the
   // background.
   function luminance(hex) {
-    var c = Qt.color(hex)
+    const c = Qt.color(hex)
     function lin(v) {
       return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
     }
@@ -58,8 +58,8 @@ ColumnLayout {
   }
 
   function contrast(a, b) {
-    var la = luminance(a)
-    var lb = luminance(b)
+    const la = luminance(a)
+    const lb = luminance(b)
     return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
   }
 
@@ -222,9 +222,9 @@ ColumnLayout {
   Connections {
     target: Session
     function onPaletteProposed(proposal) {
-      var next = {}
-      var proposed = (proposal && proposal.colors) || ({})
-      for (var key in proposed) {
+      const next = {}
+      const proposed = (proposal && proposal.colors) || ({})
+      for (const key in proposed) {
         if (root.colors[key] !== undefined && root.colors[key] !== proposed[key])
           next[key] = proposed[key]
       }

@@ -25,7 +25,7 @@ ColumnLayout {
   spacing: Theme.gap
 
   readonly property var selectedEntry: {
-    for (var i = 0; i < backgrounds.length; i++)
+    for (let i = 0; i < backgrounds.length; i++)
       if (backgrounds[i].name === selected) return backgrounds[i]
     return null
   }
@@ -42,11 +42,11 @@ ColumnLayout {
 
   function applyState(json) {
     try {
-      var state = JSON.parse(json)
+      const state = JSON.parse(json)
       root.backgrounds = state.backgrounds || []
       root.owned = state.owned === true
       if (!root.selectedEntry) {
-        var current = root.backgrounds.find(entry => entry.current)
+        const current = root.backgrounds.find(entry => entry.current)
         root.selected = current ? current.name
           : (root.backgrounds.length > 0 ? root.backgrounds[0].name : "")
       }
