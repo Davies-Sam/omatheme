@@ -381,6 +381,33 @@ for key, value in data["colors"].items():
   echo "$json"
 }
 
+# A fork made before cmd_fork dropped pins may still carry the parent's
+# shell.<section>.toml and keyboard.rgb, freezing its lock screen and
+# keyboard at the parent's palette (see cmd_fork). unpin deletes them so
+# `omarchy theme set` derives both from this theme's colors.toml. No GUI
+# hook: fresh forks never have the problem, so a shell verb covers the
+# old ones.
+cmd_unpin() {
+  local slug dir pin removed=no
+  slug=$(current_slug)
+  theme_owned "$slug" || die "theme '$slug' is a stock theme; fork it first (omatheme-palette fork <new-slug>)"
+  dir="$USER_THEMES/$slug"
+
+  for pin in "$dir"/shell.*.toml "$dir/keyboard.rgb"; do
+    if [[ -e $pin && ${pin##*/} != shell.toml ]]; then
+      rm -f "$pin"
+      echo "removed ${pin##*/}"
+      removed=yes
+    fi
+  done
+
+  if [[ $removed == yes ]]; then
+    apply_theme "$slug"
+  else
+    echo "nothing pinned: no shell.<section>.toml or keyboard.rgb in $dir"
+  fi
+}
+
 # `mode` is not a palette color -- cmd_set refuses it -- but flipping a fork
 # from dark to light is theme authoring, so it gets its own verb with the
 # same surgical-edit discipline. It drives GTK's prefer-dark and friends
@@ -407,6 +434,7 @@ reset) shift; cmd_reset "$@" ;;
 mode) shift; cmd_mode "$@" ;;
 generate) shift; cmd_generate "$@" ;;
 fork) shift; cmd_fork "$@" ;;
+unpin) shift; cmd_unpin "$@" ;;
 *)
   cat >&2 <<'USAGE'
 Usage:
@@ -416,12 +444,15 @@ Usage:
   omatheme-palette mode [light|dark]
   omatheme-palette generate <image> [--apply]
   omatheme-palette fork <new-slug>
+  omatheme-palette unpin
 
 Keys are the color entries of the current theme's colors.toml, e.g.
 --accent, --background, --red. The hyprland_* border keys are not
 palette colors (omatheme-border owns them); `mode` has its own verb.
 reset restores stock values (stock themes only); fork copies the
-current theme to ~/.config/omarchy/themes/<new-slug>/.
+current theme to ~/.config/omarchy/themes/<new-slug>/; unpin removes
+inherited shell.<section>.toml / keyboard.rgb pins from a user theme
+so the lock screen and keyboard derive from its palette.
 USAGE
   exit 1
   ;;

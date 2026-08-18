@@ -49,3 +49,10 @@ writable_colors() {
 apply_theme() {
   omarchy theme set "$1" >/dev/null
 }
+
+# A theme the user may rewrite wholesale: it lives in the user themes dir
+# and does not shadow a stock theme (a shadowing overlay only carries
+# selective overrides, not the theme's identity).
+theme_owned() {
+  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
+}

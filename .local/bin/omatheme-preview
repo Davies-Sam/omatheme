@@ -17,10 +17,6 @@ set -euo pipefail
 
 source "$(dirname "$0")/omatheme-lib"
 
-theme_owned() {
-  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
-}
-
 cmd_regen() {
   local slug dir shot
   slug=$(current_slug)

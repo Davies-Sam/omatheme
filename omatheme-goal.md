@@ -311,7 +311,7 @@ synchronization (see the milestone 3 facts above).
       to the fork's accent and a `[lock]` section using the fork's colors;
       the test fork is removed and the previously running theme and
       background are restored (verify, don't assume).
-- [ ] **8b. `unpin` on `omatheme-palette`.** For existing forks that
+- [x] **8b. `unpin` on `omatheme-palette`.** For existing forks that
       already carry inherited pins: delete `shell.*.toml` (again sparing
       `shell.toml` itself) and `keyboard.rgb` from a user-owned theme
       (refuse stock with a pointer to fork first), print what was removed,
