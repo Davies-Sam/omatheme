@@ -243,7 +243,7 @@ existing palette.
 
 ## Task 7 — Polish
 
-- [ ] **7a. README.** Update for the new panels and helpers, including the
+- [x] **7a. README.** Update for the new panels and helpers, including the
       authoring story (fork → backgrounds → palette → previews → publish).
 - [ ] **7b. Review pass.** Run the qt-qml-review lint script over changed
       QML and fix what it flags in the new code (the pre-existing style
