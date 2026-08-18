@@ -11,7 +11,7 @@ QtObject {
   property var colors: ({})
 
   function value(key, fallback) {
-    var found = root.colors ? root.colors[key] : undefined
+    const found = root.colors ? root.colors[key] : undefined
     return (found && String(found).length > 0) ? found : fallback
   }
 

@@ -42,7 +42,7 @@ ShellRoot {
 
   function applySession(json) {
     try {
-      var state = JSON.parse(json)
+      const state = JSON.parse(json)
       Theme.colors = state.palette || ({})
       if (state.font) Theme.fontFamily = state.font
       if (state.textScale) Theme.textScale = state.textScale
@@ -72,9 +72,9 @@ ShellRoot {
   // arrives the moment it is made. monitor only reports changes, so one
   // initial `get` seeds the value.
   function applyScale(raw) {
-    var match = /[\d.]+\s*$/.exec(String(raw))
+    const match = /[\d.]+\s*$/.exec(String(raw))
     if (!match) return
-    var parsed = parseFloat(match[0])
+    const parsed = parseFloat(match[0])
     if (!isNaN(parsed) && parsed > 0)
       Theme.textScale = Math.min(3, Math.max(0.5, parsed))
   }
@@ -163,33 +163,32 @@ ShellRoot {
         spacing: Theme.gap
 
         RowLayout {
-          Layout.fillWidth: true
           spacing: 8
+          Layout.fillWidth: true
 
           Text {
             text: "Omatheme"
             color: Theme.foreground
-            font.family: Theme.fontFamily
-            font.pixelSize: Theme.size(17)
-            font.bold: true
+            font {
+              family: Theme.fontFamily
+              pixelSize: Theme.size(17)
+              bold: true
+            }
           }
 
           Item { Layout.fillWidth: true }
 
           Rectangle {
-            // Theme names are arbitrary text (forks are user-named); cap and
-            // elide instead of letting a long one push past the window edge.
-            Layout.maximumWidth: Theme.size(200)
             implicitWidth: themeLabel.implicitWidth + Theme.size(18)
             implicitHeight: Theme.size(24)
             radius: Theme.radius
             color: Qt.alpha(Theme.accent, 0.15)
+            // Theme names are arbitrary text (forks are user-named); cap and
+            // elide instead of letting a long one push past the window edge.
+            Layout.maximumWidth: Theme.size(200)
 
             Text {
               id: themeLabel
-              anchors.fill: parent
-              anchors.leftMargin: Theme.size(9)
-              anchors.rightMargin: Theme.size(9)
               horizontalAlignment: Text.AlignHCenter
               verticalAlignment: Text.AlignVCenter
               elide: Text.ElideRight
@@ -198,6 +197,11 @@ ShellRoot {
               color: Theme.accent
               font.family: Theme.fontFamily
               font.pixelSize: Theme.size(11)
+              anchors {
+                fill: parent
+                leftMargin: Theme.size(9)
+                rightMargin: Theme.size(9)
+              }
             }
           }
         }
@@ -205,10 +209,10 @@ ShellRoot {
         // One panel needs no switcher; the strip appears as soon as a second
         // one is registered above.
         Segmented {
-          Layout.fillWidth: true
           visible: root.panels.length > 1
           options: root.panels.map(entry => ({ key: entry.key, label: entry.label }))
           current: root.panel
+          Layout.fillWidth: true
           onSelected: key => root.panel = key
         }
 
@@ -224,12 +228,14 @@ ShellRoot {
         Flickable {
           id: panelFlick
 
-          Layout.fillWidth: true
-          Layout.fillHeight: true
+          // A Flickable does not clip by default; without it the panel
+          // content paints over the header while scrolled.
           clip: true
           contentWidth: width
           contentHeight: panelStack.height
           boundsBehavior: Flickable.StopAtBounds
+          Layout.fillWidth: true
+          Layout.fillHeight: true
 
           StackLayout {
             id: panelStack
@@ -242,9 +248,9 @@ ShellRoot {
             // against the not-yet-populated Repeater and stay null forever.
             readonly property real currentImplicit: {
               if (panelRepeater.count === 0) return 0
-              var loader = panelRepeater.itemAt(currentIndex)
+              const loader = panelRepeater.itemAt(currentIndex)
               if (!loader) return 0
-              return loader.item ? loader.item.implicitHeight : loader.implicitHeight
+              return loader.item?.implicitHeight ?? loader.implicitHeight
             }
             // The content gets its full implicit height -- no "squeeze
             // tolerance". An earlier version subtracted a small slack on the

@@ -22,9 +22,6 @@ Rectangle {
 
   TextInput {
     id: input
-    anchors.fill: parent
-    anchors.leftMargin: 10
-    anchors.rightMargin: 10
     verticalAlignment: TextInput.AlignVCenter
     color: Theme.foreground
     font.family: Theme.fontFamily
@@ -32,6 +29,11 @@ Rectangle {
     selectByMouse: true
     selectionColor: Theme.selection
     onEditingFinished: root.editingFinished()
+    anchors {
+      fill: parent
+      leftMargin: 10
+      rightMargin: 10
+    }
   }
 
   Text {

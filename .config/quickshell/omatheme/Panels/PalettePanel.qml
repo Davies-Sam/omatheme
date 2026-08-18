@@ -36,8 +36,8 @@ ColumnLayout {
   }
 
   function setEdit(key, hex) {
-    var next = {}
-    for (var k in root.edits) next[k] = root.edits[k]
+    const next = {}
+    for (const k in root.edits) next[k] = root.edits[k]
     if (hex === root.colors[key]) delete next[key]
     else next[key] = hex
     root.edits = next
@@ -81,7 +81,7 @@ ColumnLayout {
 
   function applyState(json) {
     try {
-      var state = JSON.parse(json)
+      const state = JSON.parse(json)
       root.colors = state.colors || ({})
       root.keys = Object.keys(root.colors)
       root.hasStock = state.stock === true
@@ -193,8 +193,8 @@ ColumnLayout {
   }
 
   function preview() {
-    var command = ["omatheme-palette", "set"]
-    for (var key in root.edits) {
+    const command = ["omatheme-palette", "set"]
+    for (const key in root.edits) {
       command.push("--" + key)
       command.push(root.edits[key])
     }
@@ -240,10 +240,10 @@ ColumnLayout {
 
   // ------------------------------------------------------------------- ui
   GridLayout {
-    Layout.fillWidth: true
     columns: 7
     columnSpacing: Theme.size(6)
     rowSpacing: Theme.size(6)
+    Layout.fillWidth: true
 
     Repeater {
       model: root.keys
@@ -252,14 +252,14 @@ ColumnLayout {
 
         required property string modelData
 
-        Layout.fillWidth: true
-        Layout.preferredHeight: Theme.size(30)
         radius: Theme.radius
         color: root.valueOf(swatch.modelData)
         border.width: root.selected === swatch.modelData ? 2 : 1
         border.color: root.selected === swatch.modelData
           ? Theme.accent
           : Theme.hairlineStrong
+        Layout.fillWidth: true
+        Layout.preferredHeight: Theme.size(30)
 
         // A pending, un-previewed edit gets a marker so it can be spotted
         // after tabbing around the grid.
@@ -268,10 +268,10 @@ ColumnLayout {
           width: Theme.size(6)
           height: width
           radius: width / 2
-          anchors { top: parent.top; right: parent.right; margins: Theme.size(3) }
           color: Theme.accent
           border.width: 1
           border.color: Theme.background
+          anchors { top: parent.top; right: parent.right; margins: Theme.size(3) }
         }
 
         MouseArea {
@@ -284,17 +284,19 @@ ColumnLayout {
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     Text {
-      Layout.fillWidth: true
       text: root.selected + (root.edits[root.selected] !== undefined ? "  (edited)" : "")
       color: Theme.foreground
-      font.family: Theme.fontFamily
-      font.pixelSize: Theme.size(12)
-      font.bold: true
       elide: Text.ElideRight
+      Layout.fillWidth: true
+      font {
+        family: Theme.fontFamily
+        pixelSize: Theme.size(12)
+        bold: true
+      }
     }
 
     // Readability hint: quiet when it passes, louder as it degrades.
@@ -310,17 +312,17 @@ ColumnLayout {
   }
 
   ColorEditor {
-    Layout.fillWidth: true
     showAlpha: false
     value: root.valueOf(root.selected)
+    Layout.fillWidth: true
     onChanged: (value, alpha) => root.setEdit(root.selected, value.toString().substring(0, 7))
   }
 
   Item { Layout.fillHeight: true }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     Text {
       text: "Mode"
@@ -330,22 +332,22 @@ ColumnLayout {
     }
 
     Segmented {
-      Layout.fillWidth: true
       options: [{ key: "dark", label: "Dark" }, { key: "light", label: "Light" }]
       current: root.mode
+      Layout.fillWidth: true
       onSelected: key => root.setMode(key)
     }
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     Field {
       id: forkName
-      Layout.fillWidth: true
       placeholder: "new-theme-name"
       maximumLength: 40
+      Layout.fillWidth: true
     }
 
     TextButton {
@@ -356,8 +358,8 @@ ColumnLayout {
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     TextButton {
       label: "Regenerate previews"
@@ -376,7 +378,6 @@ ColumnLayout {
   }
 
   Text {
-    Layout.fillWidth: true
     visible: root.publishOutput.length > 0
     textFormat: Text.PlainText
     text: root.publishOutput
@@ -384,10 +385,10 @@ ColumnLayout {
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(10)
     wrapMode: Text.WrapAnywhere
+    Layout.fillWidth: true
   }
 
   Text {
-    Layout.fillWidth: true
     visible: root.forkError.length > 0
     // Raw helper stderr: AutoText would sniff <tags> or & as styled text
     // and mangle exactly the message a failing fork needs to show verbatim.
@@ -397,20 +398,21 @@ ColumnLayout {
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   Text {
-    Layout.fillWidth: true
     text: "No live preview here: applying a palette regenerates the whole theme, so press Preview to see it."
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     TextButton {
       label: "Stock default"

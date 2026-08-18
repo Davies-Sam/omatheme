@@ -72,7 +72,7 @@ RowLayout {
       preventStealing: true
 
       function commit(mouseX) {
-        var ratio = Math.max(0, Math.min(1, (mouseX - handle.width / 2) / Math.max(1, track.width - handle.width)))
+        const ratio = Math.max(0, Math.min(1, (mouseX - handle.width / 2) / Math.max(1, track.width - handle.width)))
         root.moved(root.from + ratio * (root.to - root.from))
       }
 

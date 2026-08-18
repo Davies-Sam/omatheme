@@ -132,10 +132,10 @@ ColumnLayout {
 
   // ------------------------------------------------------------------- ui
   GridLayout {
-    Layout.fillWidth: true
     columns: 3
     columnSpacing: Theme.size(6)
     rowSpacing: Theme.size(6)
+    Layout.fillWidth: true
 
     Repeater {
       model: root.backgrounds
@@ -145,12 +145,12 @@ ColumnLayout {
 
         required property var modelData
 
-        Layout.fillWidth: true
-        Layout.preferredHeight: Theme.size(74)
         color: Theme.sunken
         border.width: cell.modelData.current ? 2 : 1
         border.color: cell.modelData.current ? Theme.accent
           : (root.selected === cell.modelData.name ? Theme.focusRing : Theme.hairline)
+        Layout.fillWidth: true
+        Layout.preferredHeight: Theme.size(74)
 
         // 4K wallpapers: decode a thumbnail off the UI thread, never the
         // full image.
@@ -174,27 +174,29 @@ ColumnLayout {
   }
 
   Text {
-    Layout.fillWidth: true
     visible: root.selectedEntry !== null
     text: root.selected + (root.selectedEntry && !root.selectedEntry.removable
       ? "  (shipped by the stock theme)" : "")
     color: Theme.foreground
-    font.family: Theme.fontFamily
-    font.pixelSize: Theme.size(12)
-    font.bold: true
     elide: Text.ElideRight
+    Layout.fillWidth: true
+    font {
+      family: Theme.fontFamily
+      pixelSize: Theme.size(12)
+      bold: true
+    }
   }
 
   Item { Layout.fillHeight: true }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     Field {
       id: addField
-      Layout.fillWidth: true
       placeholder: "path or https://… image link"
+      Layout.fillWidth: true
     }
 
     TextButton {
@@ -208,7 +210,6 @@ ColumnLayout {
   }
 
   Text {
-    Layout.fillWidth: true
     visible: root.status.length > 0
     textFormat: Text.PlainText
     text: root.status
@@ -216,20 +217,21 @@ ColumnLayout {
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   Text {
-    Layout.fillWidth: true
     text: "Added images go to this theme's own set. Cycling stays on SUPER + CTRL + SPACE."
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     TextButton {
       label: "Remove"

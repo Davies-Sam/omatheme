@@ -37,7 +37,7 @@ ColumnLayout {
   // drift apart.
 
   function toHex2(value) {
-    var hex = Math.round(Math.max(0, Math.min(1, value)) * 255).toString(16)
+    const hex = Math.round(Math.max(0, Math.min(1, value)) * 255).toString(16)
     return hex.length < 2 ? "0" + hex : hex
   }
 
@@ -46,13 +46,13 @@ ColumnLayout {
   }
 
   function specString(spec) {
-    var first = rgbaLiteral(spec.a, spec.aAlpha)
+    const first = rgbaLiteral(spec.a, spec.aAlpha)
     if (!spec.gradient) return first
     return first + " " + rgbaLiteral(spec.b, spec.bAlpha) + " " + Math.round(spec.angle) + "deg"
   }
 
   function specLua(spec) {
-    var first = '"' + rgbaLiteral(spec.a, spec.aAlpha) + '"'
+    const first = '"' + rgbaLiteral(spec.a, spec.aAlpha) + '"'
     if (!spec.gradient) return first
     return '{ colors = { ' + first + ', "' + rgbaLiteral(spec.b, spec.bAlpha) + '" }, angle = ' + Math.round(spec.angle) + ' }'
   }
@@ -60,16 +60,16 @@ ColumnLayout {
   function parseSpec(text, fallback) {
     if (!text) return fallback
 
-    var found = []
-    var pattern = /(?:rgba|rgb)\(\s*([0-9a-fA-F]{6,8})\s*\)|#([0-9a-fA-F]{6,8})/g
-    var match
+    const found = []
+    const pattern = /(?:rgba|rgb)\(\s*([0-9a-fA-F]{6,8})\s*\)|#([0-9a-fA-F]{6,8})/g
+    let match
     while ((match = pattern.exec(text)) !== null) found.push(match[1] || match[2])
     if (found.length === 0) return fallback
 
     function hexOf(raw) { return "#" + raw.substring(0, 6).toLowerCase() }
     function alphaOf(raw) { return raw.length >= 8 ? parseInt(raw.substring(6, 8), 16) / 255 : 1 }
 
-    var degrees = /(-?\d+(?:\.\d+)?)\s*deg/.exec(text)
+    const degrees = /(-?\d+(?:\.\d+)?)\s*deg/.exec(text)
     return {
       gradient: found.length > 1,
       a: hexOf(found[0]),
@@ -82,10 +82,10 @@ ColumnLayout {
 
   // ------------------------------------------------------------- mutation
   function mutate(changes) {
-    var next = {}
-    var source = root.current
-    for (var key in source) next[key] = source[key]
-    for (var change in changes) next[change] = changes[change]
+    const next = {}
+    const source = root.current
+    for (const key in source) next[key] = source[key]
+    for (const change in changes) next[change] = changes[change]
 
     if (root.editing === "active") root.active = next
     else root.inactive = next
@@ -95,7 +95,7 @@ ColumnLayout {
   }
 
   function setStopColor(value, alpha) {
-    var hex = value.toString().substring(0, 7)
+    const hex = value.toString().substring(0, 7)
     mutate(root.stop === "a" ? { a: hex, aAlpha: alpha } : { b: hex, bAlpha: alpha })
   }
 
@@ -111,7 +111,7 @@ ColumnLayout {
 
   function applyState(json) {
     try {
-      var state = JSON.parse(json)
+      const state = JSON.parse(json)
       root.active = parseSpec(state.active, root.active)
       root.inactive = parseSpec(state.inactive, root.inactive)
       root.dirty = false
@@ -197,40 +197,40 @@ ColumnLayout {
 
   // ------------------------------------------------------------------- ui
   RowLayout {
+    spacing: 12
     Layout.fillWidth: true
     Layout.preferredHeight: Theme.size(112)
     Layout.maximumHeight: Theme.size(112)
-    spacing: 12
 
     BorderPreview {
-      Layout.fillWidth: true
-      Layout.fillHeight: true
       caption: "Focused"
       colorA: Qt.alpha(root.active.a, root.active.aAlpha)
       colorB: Qt.alpha(root.active.b, root.active.bAlpha)
       twoStop: root.active.gradient
       angle: root.active.angle
       selected: root.editing === "active"
+      Layout.fillWidth: true
+      Layout.fillHeight: true
       onClicked: { root.editing = "active"; root.stop = "a" }
     }
 
     BorderPreview {
-      Layout.fillWidth: true
-      Layout.fillHeight: true
       caption: "Unfocused"
       colorA: Qt.alpha(root.inactive.a, root.inactive.aAlpha)
       colorB: Qt.alpha(root.inactive.b, root.inactive.bAlpha)
       twoStop: root.inactive.gradient
       angle: root.inactive.angle
       selected: root.editing === "inactive"
+      Layout.fillWidth: true
+      Layout.fillHeight: true
       onClicked: { root.editing = "inactive"; root.stop = "a" }
     }
   }
 
   Segmented {
-    Layout.fillWidth: true
     options: [{ key: "solid", label: "Solid" }, { key: "gradient", label: "Gradient" }]
     current: root.current.gradient ? "gradient" : "solid"
+    Layout.fillWidth: true
     onSelected: key => {
       root.mutate({ gradient: key === "gradient" })
       if (key === "solid") root.stop = "a"
@@ -238,22 +238,21 @@ ColumnLayout {
   }
 
   Segmented {
-    Layout.fillWidth: true
     visible: root.current.gradient
     options: [{ key: "a", label: "From" }, { key: "b", label: "To" }]
     current: root.stop
+    Layout.fillWidth: true
     onSelected: key => root.stop = key
   }
 
   ColorEditor {
-    Layout.fillWidth: true
     value: root.stop === "a" ? root.current.a : root.current.b
     alpha: root.stop === "a" ? root.current.aAlpha : root.current.bAlpha
+    Layout.fillWidth: true
     onChanged: (value, alpha) => root.setStopColor(value, alpha)
   }
 
   LabeledSlider {
-    Layout.fillWidth: true
     visible: root.current.gradient
     label: "Angle"
     from: 0
@@ -264,24 +263,25 @@ ColumnLayout {
       GradientStop { position: 0.0; color: Qt.color(root.current.a) },
       GradientStop { position: 1.0; color: Qt.color(root.current.b) }
     ]
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ angle: Math.round(v) })
   }
 
   Item { Layout.fillHeight: true }
 
   Text {
-    Layout.fillWidth: true
     visible: !Session.editable
     text: "Applying creates a user overlay for this stock theme."
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     TextButton {
       label: "Theme default"

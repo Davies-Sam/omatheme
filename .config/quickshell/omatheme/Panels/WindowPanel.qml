@@ -25,9 +25,9 @@ ColumnLayout {
 
   // ------------------------------------------------------------- mutation
   function mutate(changes) {
-    var next = {}
-    for (var key in root.values) next[key] = root.values[key]
-    for (var change in changes) next[change] = changes[change]
+    const next = {}
+    for (const key in root.values) next[key] = root.values[key]
+    for (const change in changes) next[change] = changes[change]
     root.values = next
     root.dirty = true
     preview.restart()
@@ -58,12 +58,12 @@ ColumnLayout {
 
   function applyState(json) {
     try {
-      var state = JSON.parse(json)
+      const state = JSON.parse(json)
       // Refuse a partial or non-numeric reply outright: one missing key
       // would put slider handles at NaN and make apply() throw.
-      var next = {}
-      for (var key in root.values) {
-        var value = Number(state[key])
+      const next = {}
+      for (const key in root.values) {
+        const value = Number(state[key])
         if (!isFinite(value)) throw new Error("bad or missing key '" + key + "'")
         next[key] = value
       }
@@ -150,80 +150,80 @@ ColumnLayout {
 
   // ------------------------------------------------------------------- ui
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Border"
     from: 0
     to: 10
     value: root.values.border_size
     readout: Math.round(root.values.border_size) + " px"
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ border_size: Math.round(v) })
   }
 
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Round"
     from: 0
     to: 30
     value: root.values.rounding
     readout: Math.round(root.values.rounding) + " px"
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ rounding: Math.round(v) })
   }
 
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Gap in"
     from: 0
     to: 30
     value: root.values.gaps_in
     readout: Math.round(root.values.gaps_in) + " px"
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ gaps_in: Math.round(v) })
   }
 
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Gap out"
     from: 0
     to: 60
     value: root.values.gaps_out
     readout: Math.round(root.values.gaps_out) + " px"
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ gaps_out: Math.round(v) })
   }
 
   // The floor stops a drag from turning every window invisible mid-preview.
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Focus"
     from: 0.5
     to: 1
     value: root.values.active_opacity
     readout: percent(root.values.active_opacity)
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ active_opacity: v })
   }
 
   LabeledSlider {
-    Layout.fillWidth: true
     label: "Unfocus"
     from: 0.5
     to: 1
     value: root.values.inactive_opacity
     readout: percent(root.values.inactive_opacity)
+    Layout.fillWidth: true
     onMoved: v => root.mutate({ inactive_opacity: v })
   }
 
   Item { Layout.fillHeight: true }
 
   Text {
-    Layout.fillWidth: true
     text: "Saved to looknfeel.lua, not the theme."
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
     wrapMode: Text.WordWrap
+    Layout.fillWidth: true
   }
 
   RowLayout {
-    Layout.fillWidth: true
     spacing: 8
+    Layout.fillWidth: true
 
     TextButton {
       label: "Default"

@@ -33,8 +33,6 @@ Rectangle {
 
         required property var modelData
 
-        Layout.fillWidth: true
-        Layout.fillHeight: true
         // Without an intrinsic size the whole pill's implicit width collapses
         // to its spacing; derive it from the label so the component also
         // works outside a fillWidth cell.
@@ -44,6 +42,8 @@ Rectangle {
         color: segment.modelData.key === root.current
           ? Qt.alpha(Theme.accent, 0.22)
           : (segmentArea.containsMouse ? Qt.alpha(Theme.foreground, 0.08) : "transparent")
+        Layout.fillWidth: true
+        Layout.fillHeight: true
 
         Behavior on color { ColorAnimation { duration: 90 } }
 
