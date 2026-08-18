@@ -193,7 +193,7 @@ the wrong face in Omarchy's theme switcher forever.
       dimensions, and `omarchy theme switcher` shows the fork's own look
       (verify by reading the generated PNGs back, full-screen capture of
       the switcher is a bonus).
-- [ ] **4b. UI hook.** A "Regenerate previews" TextButton in the Palette
+- [x] **4b. UI hook.** A "Regenerate previews" TextButton in the Palette
       panel's fork area, enabled only for user-owned themes, running the
       helper. The app's own window is part of the desktop — accept that,
       or briefly minimize via hyprctl if it proves ugly; decide while

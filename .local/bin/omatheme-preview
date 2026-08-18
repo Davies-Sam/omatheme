@@ -31,7 +31,26 @@ cmd_regen() {
   # Expand now: `shot` is function-local and would be unbound by the time
   # an EXIT trap fires at script scope.
   trap "rm -f '$shot'" EXIT
+
+  # The tool's own window would dominate the capture, so dodge it: move it
+  # off-screen for the shot and put it back afterwards. Decided over
+  # accepting it in-frame -- an app window front and center makes a bad
+  # theme preview, and the flicker lasts under half a second. No-op when
+  # the GUI isn't running.
+  local pos ox oy
+  pos=$(hyprctl clients -j 2>/dev/null |
+    jq -r '.[] | select(.title=="Omatheme") | "\(.at[0]) \(.at[1])"' | head -1)
+  if [[ $pos ]]; then
+    read -r ox oy <<<"$pos"
+    hyprctl dispatch "hl.dsp.window.move({ window = \"title:Omatheme\", x = 9000, y = 9000 })" >/dev/null
+    sleep 0.35
+  fi
+
   grim "$shot"
+
+  if [[ $pos ]]; then
+    hyprctl dispatch "hl.dsp.window.move({ window = \"title:Omatheme\", x = $ox, y = $oy })" >/dev/null
+  fi
 
   magick "$shot" -resize 1800x1012^ -gravity center -extent 1800x1012 "$dir/preview.png"
   magick "$shot" -resize 1920x1080^ -gravity center -extent 1920x1080 "$dir/preview-unlock.png"

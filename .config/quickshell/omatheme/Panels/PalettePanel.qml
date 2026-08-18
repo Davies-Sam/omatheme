@@ -140,6 +140,23 @@ ColumnLayout {
 
   property string forkError: ""
 
+  // Previews come from the desktop itself; the helper dodges this window
+  // off-screen during the capture and restores it.
+  Process {
+    id: previewer
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.forkError = text.trim()
+    }
+  }
+
+  function regenPreviews() {
+    if (previewer.running) return
+    root.forkError = ""
+    previewer.command = ["omatheme-preview", "regen"]
+    previewer.running = true
+  }
+
   function fork(slug) {
     if (!/^[a-z0-9][a-z0-9-]*$/.test(slug)) return
     forker.command = ["bash", "-c",
@@ -292,6 +309,20 @@ ColumnLayout {
       enabled: /^[a-z0-9][a-z0-9-]*$/.test(forkName.text)
       onClicked: { root.fork(forkName.text); forkName.text = "" }
     }
+  }
+
+  RowLayout {
+    Layout.fillWidth: true
+    spacing: 8
+
+    TextButton {
+      label: "Regenerate previews"
+      // User-owned themes only; the helper refuses stock ones anyway.
+      enabled: !root.hasStock
+      onClicked: root.regenPreviews()
+    }
+
+    Item { Layout.fillWidth: true }
   }
 
   Text {
