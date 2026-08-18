@@ -1,0 +1,275 @@
+#!/bin/bash
+
+# Omatheme's window domain: read and write the window chrome Hyprland owns
+# rather than the theme -- border width, corner rounding, gaps and opacity.
+# Each panel in the app gets a helper like this, so every change the GUI can
+# make is also reachable from a shell.
+#
+# Values land in ~/.config/hypr/looknfeel.lua, the user file Quattro reserves
+# for look'n'feel overrides. That file has real user content in it (comments,
+# a per-monitor workspace rule), so edits are surgical string replacements:
+# only the six keys this helper owns are ever touched, and only inside
+# hl.config blocks -- never inside hl.workspace_rule lines, which mention
+# gaps_in/gaps_out too.
+#
+# Current values are read with `hyprctl -j getoption` rather than by parsing
+# Lua, so `show` reports what is actually live in the compositor.
+
+set -euo pipefail
+
+LOOKNFEEL="$HOME/.config/hypr/looknfeel.lua"
+
+KEYS=(border_size rounding gaps_in gaps_out active_opacity inactive_opacity)
+
+die() {
+  echo "omatheme-window: $1" >&2
+  exit 1
+}
+
+# option name -> hyprland section (general/decoration)
+section_of() {
+  case $1 in
+  border_size | gaps_in | gaps_out) echo general ;;
+  rounding | active_opacity | inactive_opacity) echo decoration ;;
+  *) die "unknown key '$1'" ;;
+  esac
+}
+
+# --gaps-in -> gaps_in, or fail
+key_of_flag() {
+  local key=${1#--}
+  key=${key//-/_}
+  local k
+  for k in "${KEYS[@]}"; do
+    [[ $key == "$k" ]] && { echo "$key"; return 0; }
+  done
+  return 1
+}
+
+validate() {
+  local key=$1 value=$2
+  case $key in
+  active_opacity | inactive_opacity)
+    [[ $value =~ ^(0(\.[0-9]+)?|1(\.0+)?)$ ]] || die "$key must be 0..1, got '$value'" ;;
+  *)
+    [[ $value =~ ^[0-9]+$ ]] || die "$key must be a non-negative integer, got '$value'" ;;
+  esac
+}
+
+# Rewrite only the keys named on the command line, leaving every other byte of
+# looknfeel.lua alone. An empty value removes the key's line. Keys are only
+# matched inside hl.config blocks; a key that is nowhere yet is inserted into
+# an existing section table, an existing hl.config block, or a fresh block
+# appended at the end, in that order of preference.
+edit_keys() {
+  python3 - "$LOOKNFEEL" "$@" <<'PY'
+import re
+import sys
+
+path, *pairs = sys.argv[1:]
+
+SECTION = {
+    'border_size': 'general', 'gaps_in': 'general', 'gaps_out': 'general',
+    'rounding': 'decoration', 'active_opacity': 'decoration',
+    'inactive_opacity': 'decoration',
+}
+
+try:
+    with open(path) as handle:
+        text = handle.read()
+except OSError:
+    text = ''
+
+
+def config_blocks(text):
+    """Spans of every hl.config( ... ) call, by paren balancing."""
+    for m in re.finditer(r'hl\.config\s*\(', text):
+        depth = 0
+        for j in range(m.end() - 1, len(text)):
+            if text[j] == '(':
+                depth += 1
+            elif text[j] == ')':
+                depth -= 1
+                if depth == 0:
+                    yield m.start(), j + 1
+                    break
+
+
+def table_span(text, start, end, name):
+    """Span of `name = { ... }` inside text[start:end], braces balanced."""
+    m = re.search(rf'\b{name}\s*=\s*{{', text[start:end])
+    if not m:
+        return None
+    depth = 0
+    for j in range(start + m.end() - 1, end):
+        if text[j] == '{':
+            depth += 1
+        elif text[j] == '}':
+            depth -= 1
+            if depth == 0:
+                return start + m.start(), j + 1
+    return None
+
+
+def set_key(text, key, value):
+    section = SECTION[key]
+    for b0, b1 in config_blocks(text):
+        span = table_span(text, b0, b1, section)
+        if not span:
+            continue
+        t0, t1 = span
+        existing = re.compile(rf'(?<![\w.]){key}\s*=\s*[-+]?[0-9.]+')
+        m = existing.search(text, t0, t1)
+        if m:
+            if value:
+                return text[:m.start()] + f'{key} = {value}' + text[m.end():]
+            # Remove the whole line when the key sits alone on one, else just
+            # the `key = v,` fragment of an inline table.
+            ls = text.rfind('\n', 0, m.start()) + 1
+            le = text.find('\n', m.end())
+            le = len(text) if le == -1 else le + 1
+            line = text[ls:le]
+            if re.fullmatch(rf'\s*{key}\s*=\s*[-+]?[0-9.]+\s*,?\s*\n?', line):
+                return text[:ls] + text[le:]
+            e = m.end()
+            trail = re.match(r'\s*,\s*', text[e:])
+            if trail:
+                e += trail.end()
+            return text[:m.start()] + text[e:]
+        if value:
+            # Insert into this section table, matching its indentation.
+            inner = text[t0:t1]
+            im = re.search(r'\n(\s+)\S', inner)
+            indent = im.group(1) if im else '    '
+            close = text.rfind('}', t0, t1)
+            ls = text.rfind('\n', 0, close) + 1
+            return text[:ls] + f'{indent}{key} = {value},\n' + text[ls:]
+        return text
+    if not value:
+        return text
+    # No block carries this section yet: grow the first hl.config block.
+    blocks = list(config_blocks(text))
+    if blocks:
+        b0, b1 = blocks[0]
+        close = text.rfind('}', b0, b1)
+        ls = text.rfind('\n', 0, close) + 1
+        addition = f'  {section} = {{\n    {key} = {value},\n  }},\n'
+        return text[:ls] + addition + text[ls:]
+    block = (f'hl.config({{\n  {section} = {{\n    {key} = {value},\n'
+             f'  }},\n}})\n')
+    return (text.rstrip('\n') + '\n\n' + block) if text.strip() else block
+
+
+removed = False
+for i in range(0, len(pairs), 2):
+    text = set_key(text, pairs[i], pairs[i + 1])
+    removed = removed or not pairs[i + 1]
+
+# A removal can empty out a section table; drop the leftover shell so a
+# set/reset round trip leaves the file exactly as it started.
+if removed:
+    text = re.sub(r'\n[ \t]*(general|decoration)\s*=\s*\{\s*\},?(?=\n)',
+                  '', text)
+
+with open(path, 'w') as handle:
+    handle.write(text)
+PY
+}
+
+reload_and_check() {
+  hyprctl reload >/dev/null
+  local errors
+  errors=$(hyprctl configerrors)
+  [[ $errors == "no errors" || -z $errors ]] ||
+    die "hyprland reports config errors after edit:
+$errors"
+}
+
+cmd_show() {
+  python3 - <<'PY'
+import json
+import subprocess
+
+OPTIONS = {
+    'border_size': 'general:border_size',
+    'rounding': 'decoration:rounding',
+    'gaps_in': 'general:gaps_in',
+    'gaps_out': 'general:gaps_out',
+    'active_opacity': 'decoration:active_opacity',
+    'inactive_opacity': 'decoration:inactive_opacity',
+}
+
+out = {}
+for key, option in OPTIONS.items():
+    raw = subprocess.run(['hyprctl', '-j', 'getoption', option],
+                         capture_output=True, text=True, check=True).stdout
+    data = json.loads(raw)
+    if 'int' in data:
+        out[key] = data['int']
+    elif 'float' in data:
+        out[key] = round(data['float'], 4)
+    elif 'css' in data:
+        # Gaps come back as a CSS-style quad; the panel drives one value, so
+        # report the first component.
+        out[key] = int(float(data['css'].split()[0]))
+print(json.dumps(out))
+PY
+}
+
+cmd_set() {
+  local -a edits=()
+  local key
+
+  while (($#)); do
+    key=$(key_of_flag "$1") || die "unknown option '$1'"
+    [[ ${2:-} ]] || die "$1 needs a value"
+    validate "$key" "$2"
+    edits+=("$key" "$2")
+    shift 2
+  done
+
+  ((${#edits[@]})) || die "set needs at least one --<key> <value>"
+
+  edit_keys "${edits[@]}"
+  reload_and_check
+  echo "$LOOKNFEEL"
+}
+
+cmd_reset() {
+  local -a edits=()
+  local key k
+
+  if (($# == 0)) || [[ $1 == --all ]]; then
+    for k in "${KEYS[@]}"; do edits+=("$k" ""); done
+  else
+    while (($#)); do
+      key=$(key_of_flag "$1") || die "unknown option '$1'"
+      edits+=("$key" "")
+      shift
+    done
+  fi
+
+  edit_keys "${edits[@]}"
+  reload_and_check
+}
+
+case ${1:-} in
+show) shift; cmd_show "$@" ;;
+set) shift; cmd_set "$@" ;;
+reset) shift; cmd_reset "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omatheme-window show
+  omatheme-window set --<key> <value>...
+  omatheme-window reset [--<key>...|--all]
+
+Keys: --border-size --rounding --gaps-in --gaps-out
+      --active-opacity --inactive-opacity
+
+Values are written to ~/.config/hypr/looknfeel.lua; reset removes the keys
+so Omarchy's defaults apply again after reload.
+USAGE
+  exit 1
+  ;;
+esac

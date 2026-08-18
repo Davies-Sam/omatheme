@@ -106,7 +106,7 @@ highest-value panel per line of code.
 Controls: `general.border_size`, `decoration.rounding`, `general.gaps_in`,
 `general.gaps_out`, `decoration.active_opacity`, `decoration.inactive_opacity`.
 
-- [ ] **1a. `omatheme-window` helper.** `show` (JSON of the six values),
+- [x] **1a. `omatheme-window` helper.** `show` (JSON of the six values),
       `set --<key> <value>...`, `reset [--all]`. Values are written to
       `~/.config/hypr/looknfeel.lua`, which is a **user file that already has
       content** — a `hl.config({ general = { gaps_in = 8, gaps_out = 14 } })`
