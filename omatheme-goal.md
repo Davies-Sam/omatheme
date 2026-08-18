@@ -202,7 +202,7 @@ the wrong face in Omarchy's theme switcher forever.
 
 ## Task 5 — Publish
 
-- [ ] **5a. `omatheme-publish` helper.** For a user-owned theme: ensure the
+- [x] **5a. `omatheme-publish` helper.** For a user-owned theme: ensure the
       theme dir is a git repo (init + add + commit if not), and print
       copy-pasteable next steps (`gh repo create ... --push`, then
       `omarchy theme install <url>`). If `--push <remote-url>` is given,

@@ -1,0 +1,84 @@
+#!/bin/bash
+
+# Omatheme's publishing step: turn the current user-owned theme into a git
+# repo ready to share. Omarchy's distribution format is simply "a git repo
+# of the theme directory" -- `omarchy theme install <url>` clones it into
+# ~/.config/omarchy/themes/<name>, deriving <name> from the repo basename
+# with the conventional omarchy-<name>-theme wrapper stripped, and applies
+# it on the spot.
+#
+# With no arguments: init + commit whatever changed and print the
+# copy-pasteable next steps. With --push <remote-url>: also set origin and
+# push. Stock themes are refused -- fork first.
+
+set -euo pipefail
+
+source "$(dirname "$0")/omatheme-lib"
+
+theme_owned() {
+  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
+}
+
+cmd_publish() {
+  local push_url="" slug dir
+  while (($#)); do
+    case $1 in
+    --push)
+      push_url=${2:-}
+      [[ $push_url ]] || die "--push needs a remote url"
+      shift 2
+      ;;
+    *) die "unknown option '$1'" ;;
+    esac
+  done
+
+  slug=$(current_slug)
+  theme_owned "$slug" || die "theme '$slug' is a stock theme; fork it first (omatheme-palette fork <new-slug>)"
+  dir="$USER_THEMES/$slug"
+
+  [[ -d $dir/.git ]] || git -C "$dir" init -q
+
+  git -C "$dir" add -A
+  if ! git -C "$dir" rev-parse HEAD &>/dev/null; then
+    git -C "$dir" commit -qm "Add the $slug Omarchy theme"
+  elif ! git -C "$dir" diff --cached --quiet; then
+    git -C "$dir" commit -qm "Update the $slug theme"
+  fi
+
+  if [[ $push_url ]]; then
+    if git -C "$dir" remote get-url origin &>/dev/null; then
+      git -C "$dir" remote set-url origin "$push_url"
+    else
+      git -C "$dir" remote add origin "$push_url"
+    fi
+    git -C "$dir" push -q -u origin HEAD
+  fi
+
+  echo "Theme '$slug' is committed at $dir"
+  if [[ $push_url ]]; then
+    echo "Pushed to $push_url"
+    echo "Anyone can install it with:  omarchy theme install $push_url"
+  else
+    echo "To share it:"
+    echo "  gh repo create omarchy-$slug-theme --public --source '$dir' --push"
+    echo "  (the omarchy-...-theme wrapper is the convention 'omarchy theme install' strips)"
+    echo "Then anyone can install it with:"
+    echo "  omarchy theme install <repo-url>"
+  fi
+}
+
+case ${1:-} in
+publish | "") shift $(($# > 0 ? 1 : 0)); cmd_publish "$@" ;;
+--push) cmd_publish "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omatheme-publish [--push <remote-url>]
+
+Commits the current user-owned theme's directory as a git repo and prints
+the steps to share it; --push also sets origin and pushes. Installing the
+result is Omarchy's job: omarchy theme install <url>.
+USAGE
+  exit 1
+  ;;
+esac
