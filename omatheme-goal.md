@@ -395,7 +395,7 @@ session (or a loop) can verify without reinventing it.
       full-screen capture of all four panels after.
       **Done when:** the lint script reports zero unjustified findings and
       the app still looks and behaves right in the captures.
-- [ ] **12b. README screenshots and a dependency check.** Capture each of
+- [x] **12b. README screenshots and a dependency check.** Capture each of
       the four panels (grim, cropped to the window geometry from `hyprctl
       clients`), commit under `docs/`, embed in the README. Make the
       `omatheme` launcher die with a clear message naming any missing
