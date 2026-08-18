@@ -299,7 +299,7 @@ keyboard at the parent's palette. Omarchy already derives both from
 `colors.toml` whenever the files are absent — so the fix is removal, not
 synchronization (see the milestone 3 facts above).
 
-- [ ] **8a. Fork stops copying pins.** `omatheme-palette fork` excludes the
+- [x] **8a. Fork stops copying pins.** `omatheme-palette fork` excludes the
       parent's `shell.*.toml` section overrides and `keyboard.rgb` from the
       copy — a fork wants derivation, not the parent's frozen values. (Do
       not exclude a full `shell.toml`; a theme shipping the whole file made

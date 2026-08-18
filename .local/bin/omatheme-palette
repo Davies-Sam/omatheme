@@ -168,6 +168,19 @@ cmd_fork() {
   mkdir -p "$target"
   [[ -d $stock ]] && cp -r "$stock/." "$target/"
   [[ -d $user ]] && cp -r "$user/." "$target/"
+
+  # The parent's shell.<section>.toml files and keyboard.rgb are pins:
+  # they override what `omarchy theme set` derives from colors.toml,
+  # which would freeze the fork's lock screen and keyboard at the
+  # parent's palette. Drop them so the fork derives. A full shell.toml
+  # is a deliberate whole-file replacement and stays.
+  local pin
+  for pin in "$target"/shell.*.toml "$target/keyboard.rgb"; do
+    if [[ -e $pin && ${pin##*/} != shell.toml ]]; then
+      rm -f "$pin"
+    fi
+  done
+
   echo "$target"
 }
 
