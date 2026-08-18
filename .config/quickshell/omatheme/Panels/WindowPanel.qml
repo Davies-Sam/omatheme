@@ -213,7 +213,11 @@ ColumnLayout {
   Item { Layout.fillHeight: true }
 
   Text {
-    text: "Saved to looknfeel.lua, not the theme."
+    // Deliberate split, not a shortcut: window chrome is a machine
+    // preference (looknfeel.lua), so it holds across theme switches and
+    // stays out of published themes -- Omarchy's own stock themes ship
+    // hyprland.lua only for border-color specials, never gaps.
+    text: "These are this machine's window settings — they hold across theme switches and don't ship with a published theme."
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
