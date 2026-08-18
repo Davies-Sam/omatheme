@@ -17,14 +17,26 @@ ColumnLayout {
   spacing: 10
 
   // Qt reports hue as -1 for greys; holding the last real hue keeps the
-  // slider from jumping to red when saturation hits zero.
+  // slider from jumping to red when saturation hits zero. The gesture also
+  // has to lead its own echo: an emitted color comes back through the parent
+  // quantized to 8-bit RGB, which jitters the hue at low saturation -- and
+  // on greys never comes back at all (equal colors fire no change signal),
+  // which used to leave the hue slider dead. So the slider writes `hue`
+  // directly and the echo of our own emission is ignored.
   property real hue: 0
-  onValueChanged: if (value.hsvHue >= 0) hue = value.hsvHue
+  property string lastEmitted: ""
+
+  onValueChanged: {
+    if (value.toString() === root.lastEmitted) return
+    if (value.hsvHue >= 0) hue = value.hsvHue
+  }
 
   function emit(h, s, v, a) {
-    root.changed(Qt.hsva(Math.max(0, Math.min(0.99999, h)),
-                         Math.max(0, Math.min(1, s)),
-                         Math.max(0, Math.min(1, v)), 1), a)
+    var next = Qt.hsva(Math.max(0, Math.min(0.99999, h)),
+                       Math.max(0, Math.min(1, s)),
+                       Math.max(0, Math.min(1, v)), 1)
+    root.lastEmitted = next.toString()
+    root.changed(next, a)
   }
 
   RowLayout {
@@ -62,7 +74,10 @@ ColumnLayout {
       GradientStop { position: 0.83; color: "#ff00ff" },
       GradientStop { position: 1.00; color: "#ff0000" }
     ]
-    onMoved: v => root.emit(v, root.value.hsvSaturation, root.value.hsvValue, root.alpha)
+    onMoved: v => {
+      root.hue = v
+      root.emit(v, root.value.hsvSaturation, root.value.hsvValue, root.alpha)
+    }
   }
 
   LabeledSlider {

@@ -208,7 +208,7 @@ ColumnLayout {
       caption: "Focused"
       colorA: Qt.rgba(Qt.color(root.active.a).r, Qt.color(root.active.a).g, Qt.color(root.active.a).b, root.active.aAlpha)
       colorB: Qt.rgba(Qt.color(root.active.b).r, Qt.color(root.active.b).g, Qt.color(root.active.b).b, root.active.bAlpha)
-      gradient: root.active.gradient
+      twoStop: root.active.gradient
       angle: root.active.angle
       selected: root.editing === "active"
       onClicked: { root.editing = "active"; root.stop = "a" }
@@ -220,7 +220,7 @@ ColumnLayout {
       caption: "Unfocused"
       colorA: Qt.rgba(Qt.color(root.inactive.a).r, Qt.color(root.inactive.a).g, Qt.color(root.inactive.a).b, root.inactive.aAlpha)
       colorB: Qt.rgba(Qt.color(root.inactive.b).r, Qt.color(root.inactive.b).g, Qt.color(root.inactive.b).b, root.inactive.bAlpha)
-      gradient: root.inactive.gradient
+      twoStop: root.inactive.gradient
       angle: root.inactive.angle
       selected: root.editing === "inactive"
       onClicked: { root.editing = "inactive"; root.stop = "a" }

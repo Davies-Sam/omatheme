@@ -6,9 +6,11 @@ Rectangle {
 
   property string label: ""
   property bool primary: false
-  property bool enabled: true
   signal clicked()
 
+  // The inherited Item.enabled is the disable mechanism -- declaring our own
+  // bool here would shadow it, leaving the real one stuck on (hover cursor
+  // still active, future children still live).
   implicitWidth: text.implicitWidth + Theme.size(28)
   implicitHeight: Theme.size(32)
   radius: Theme.radius
@@ -38,7 +40,6 @@ Rectangle {
     anchors.fill: parent
     hoverEnabled: true
     cursorShape: Qt.PointingHandCursor
-    enabled: root.enabled
     onClicked: root.clicked()
   }
 }

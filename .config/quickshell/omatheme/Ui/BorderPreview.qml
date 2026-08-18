@@ -11,7 +11,9 @@ Rectangle {
 
   property color colorA: "#ffffff"
   property color colorB: "#ffffff"
-  property bool gradient: false
+  // Not named `gradient`: that would shadow Rectangle's own paint property
+  // and silently change its type to bool.
+  property bool twoStop: false
   property real angle: 45
   property int borderWidth: 3
   property string caption: ""
@@ -32,7 +34,7 @@ Rectangle {
     gradient: Gradient {
       orientation: Gradient.Horizontal
       GradientStop { position: 0.0; color: root.colorA }
-      GradientStop { position: 1.0; color: root.gradient ? root.colorB : root.colorA }
+      GradientStop { position: 1.0; color: root.twoStop ? root.colorB : root.colorA }
     }
   }
 
