@@ -65,7 +65,34 @@ ColumnLayout {
     }
   }
 
-  Process { id: applier }
+  // Setting `command` on a running Process is inert and `running = true` is
+  // a no-op, so pressing Preview and then "Stock default" while the first
+  // `omarchy theme set` is still regenerating would silently drop the reset.
+  // The queue keeps the latest request and replays it on exit; the re-read
+  // is driven by the exit itself rather than a wall-clock guess that loses
+  // to a slow theme set.
+  Process {
+    id: applier
+    property var pending: null
+    onExited: {
+      if (pending) {
+        command = pending
+        pending = null
+        running = true
+        return
+      }
+      loader.running = true
+      Session.reloaded()
+    }
+  }
+
+  function runApplier(cmd) {
+    if (applier.running) applier.pending = cmd
+    else {
+      applier.command = cmd
+      applier.running = true
+    }
+  }
 
   // Fork copies the current theme and switches to the copy, so a stock theme
   // can be a starting point without its overlay accumulating edits. The slug
@@ -74,10 +101,11 @@ ColumnLayout {
     id: forker
     stderr: StdioCollector {
       waitForEnd: true
-      onStreamFinished: {
-        root.forkError = text.trim()
-        settle.restart()
-      }
+      onStreamFinished: root.forkError = text.trim()
+    }
+    onExited: {
+      loader.running = true
+      Session.reloaded()
     }
   }
 
@@ -90,13 +118,6 @@ ColumnLayout {
     forker.running = true
   }
 
-  // `omarchy theme set` regenerates and reloads config; re-read once it has.
-  Timer {
-    id: settle
-    interval: 600
-    onTriggered: { loader.running = true; Session.reloaded() }
-  }
-
   function preview() {
     var command = ["omatheme-palette", "set"]
     for (var key in root.edits) {
@@ -104,9 +125,7 @@ ColumnLayout {
       command.push(root.edits[key])
     }
     if (command.length === 2) return
-    applier.command = command
-    applier.running = true
-    settle.restart()
+    runApplier(command)
   }
 
   function revert() {
@@ -116,11 +135,9 @@ ColumnLayout {
   }
 
   function resetToStock() {
-    applier.command = ["omatheme-palette", "reset", "--all"]
-    applier.running = true
+    runApplier(["omatheme-palette", "reset", "--all"])
     root.edits = ({})
     root.editCount = 0
-    settle.restart()
   }
 
   Component.onCompleted: loader.running = true

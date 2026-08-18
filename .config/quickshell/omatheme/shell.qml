@@ -94,6 +94,12 @@ ShellRoot {
     id: refit
     interval: 120
     onTriggered: {
+      // A dispatch still in flight would swallow this one (command changes
+      // on a running Process are inert); retry rather than lose the resize.
+      if (resizer.running) {
+        refit.restart()
+        return
+      }
       resizer.command = ["hyprctl", "dispatch",
         'hl.dsp.window.resize({ window = "title:Omatheme", x = ' + window.implicitWidth +
         ', y = ' + window.implicitHeight + ' })']

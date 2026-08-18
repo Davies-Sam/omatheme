@@ -65,52 +65,76 @@ ColumnLayout {
     }
   }
 
-  Process { id: applier }
-  Process { id: reverter; command: ["hyprctl", "reload"] }
+  // Setting `command` on a running Process is inert and `running = true` is
+  // a no-op, so a second action fired mid-apply would silently vanish. The
+  // queue keeps the latest request and replays it on exit; the re-read is
+  // driven by the exit itself (the helper reloads Hyprland before exiting)
+  // rather than a wall-clock guess.
+  Process {
+    id: applier
+    property var pending: null
+    onExited: {
+      if (pending) {
+        command = pending
+        pending = null
+        running = true
+        return
+      }
+      loader.running = true
+    }
+  }
+
+  function runApplier(cmd) {
+    if (applier.running) applier.pending = cmd
+    else {
+      applier.command = cmd
+      applier.running = true
+    }
+  }
+
+  Process {
+    id: reverter
+    command: ["hyprctl", "reload"]
+    onExited: loader.running = true
+  }
+
   Process { id: livePreview }
 
   // Repainting the compositor on every slider pixel is wasteful; one frame of
-  // coalescing is imperceptible and keeps hyprctl calls down.
+  // coalescing is imperceptible and keeps hyprctl calls down. If hyprctl is
+  // still busy from the previous frame, retry instead of dropping the value
+  // -- otherwise the compositor is left showing a stale mid-drag state.
   Timer {
     id: preview
     interval: 40
     onTriggered: {
+      if (livePreview.running) {
+        preview.restart()
+        return
+      }
       livePreview.command = ["hyprctl", "eval", root.luaBody(root.values)]
       livePreview.running = true
     }
   }
 
-  // `hyprctl reload` (run by the helper on set/reset, and by Revert) takes a
-  // moment to settle; re-read once it has so the sliders show what's live.
-  Timer {
-    id: settle
-    interval: 400
-    onTriggered: loader.running = true
-  }
-
   function apply() {
-    applier.command = ["omatheme-window", "set",
-                       "--border-size", String(Math.round(root.values.border_size)),
-                       "--rounding", String(Math.round(root.values.rounding)),
-                       "--gaps-in", String(Math.round(root.values.gaps_in)),
-                       "--gaps-out", String(Math.round(root.values.gaps_out)),
-                       "--active-opacity", root.values.active_opacity.toFixed(2),
-                       "--inactive-opacity", root.values.inactive_opacity.toFixed(2)]
-    applier.running = true
+    runApplier(["omatheme-window", "set",
+                "--border-size", String(Math.round(root.values.border_size)),
+                "--rounding", String(Math.round(root.values.rounding)),
+                "--gaps-in", String(Math.round(root.values.gaps_in)),
+                "--gaps-out", String(Math.round(root.values.gaps_out)),
+                "--active-opacity", root.values.active_opacity.toFixed(2),
+                "--inactive-opacity", root.values.inactive_opacity.toFixed(2)])
     root.dirty = false
-    settle.restart()
   }
 
   function revert() {
     reverter.running = true
-    settle.restart()
   }
 
   function resetToDefault() {
-    applier.command = ["omatheme-window", "reset", "--all"]
-    applier.running = true
+    runApplier(["omatheme-window", "reset", "--all"])
     root.dirty = false
-    settle.restart()
   }
 
   Component.onCompleted: loader.running = true

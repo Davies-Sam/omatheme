@@ -120,16 +120,54 @@ ColumnLayout {
     }
   }
 
-  Process { id: applier }
-  Process { id: reverter; command: ["hyprctl", "reload"] }
+  // Setting `command` on a running Process is inert and `running = true` is
+  // a no-op, so a second action fired mid-apply would silently vanish. The
+  // queue keeps the latest request and replays it on exit; the re-read is
+  // driven by the exit itself rather than a wall-clock guess that loses to a
+  // slow `omarchy theme set`.
+  Process {
+    id: applier
+    property var pending: null
+    onExited: {
+      if (pending) {
+        command = pending
+        pending = null
+        running = true
+        return
+      }
+      loader.running = true
+      Session.reloaded()
+    }
+  }
+
+  function runApplier(cmd) {
+    if (applier.running) applier.pending = cmd
+    else {
+      applier.command = cmd
+      applier.running = true
+    }
+  }
+
+  Process {
+    id: reverter
+    command: ["hyprctl", "reload"]
+    onExited: loader.running = true
+  }
+
   Process { id: livePreview }
 
   // Repainting the compositor on every slider pixel is wasteful; one frame of
-  // coalescing is imperceptible and keeps hyprctl calls down.
+  // coalescing is imperceptible and keeps hyprctl calls down. If hyprctl is
+  // still busy from the previous frame, retry instead of dropping the value
+  // -- otherwise the compositor is left showing a stale mid-drag state.
   Timer {
     id: preview
     interval: 40
     onTriggered: {
+      if (livePreview.running) {
+        preview.restart()
+        return
+      }
       livePreview.command = ["hyprctl", "eval",
         "hl.config({ general = { col = { active_border = " + root.specLua(root.active) +
         ", inactive_border = " + root.specLua(root.inactive) +
@@ -139,32 +177,20 @@ ColumnLayout {
     }
   }
 
-  // `omarchy theme set` regenerates and reloads config; re-read once it has.
-  Timer {
-    id: settle
-    interval: 600
-    onTriggered: { loader.running = true; Session.reloaded() }
-  }
-
   function apply() {
-    applier.command = ["omatheme-border", "set",
-                       "--active", specString(root.active),
-                       "--inactive", specString(root.inactive)]
-    applier.running = true
+    runApplier(["omatheme-border", "set",
+                "--active", specString(root.active),
+                "--inactive", specString(root.inactive)])
     root.dirty = false
-    settle.restart()
   }
 
   function revert() {
     reverter.running = true
-    loader.running = true
   }
 
   function resetToTheme() {
-    applier.command = ["omatheme-border", "reset", "--all"]
-    applier.running = true
+    runApplier(["omatheme-border", "reset", "--all"])
     root.dirty = false
-    settle.restart()
   }
 
   Component.onCompleted: loader.running = true
