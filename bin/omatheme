@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# Toggle the Omatheme panel inside the running omarchy-shell.
+#
+# The app lives in the shell as a panel plugin (see manifest.json), so
+# launching means asking the shell to summon it -- there is no process of
+# our own to launch or focus any more.
+
+# Fail with names, not silence: magick powers palette generation and
+# previews, jq feeds every panel's list/state JSON, and omarchy applies
+# themes. (Quickshell itself is the shell hosting us -- checked via ping.)
+missing=()
+for dep in magick jq omarchy; do
+  command -v "$dep" >/dev/null || missing+=("$dep")
+done
+if ((${#missing[@]})); then
+  echo "omatheme: missing dependencies: ${missing[*]}" >&2
+  echo "omatheme: install them first (magick is imagemagick)" >&2
+  exit 1
+fi
+
+if ! omarchy-shell -q shell ping >/dev/null 2>&1; then
+  echo "omatheme: omarchy-shell is not running -- the panel needs the shell to host it" >&2
+  exit 1
+fi
+
+exec omarchy-shell shell toggle davies-sam.omatheme '{}'

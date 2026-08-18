@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "id": "davies-sam.omatheme",
+  "name": "Omatheme",
+  "version": "1.0.0",
+  "author": "Sam Davies",
+  "description": "Theme designer panel: edit the running theme's borders, window chrome, palette and backgrounds live, then fork, preview and publish it. Summon with: omarchy-shell shell toggle davies-sam.omatheme '{}' (or run: bin/omatheme).",
+  "kinds": [
+    "panel"
+  ],
+  "entryPoints": {
+    "panel": "Omatheme.qml"
+  }
+}

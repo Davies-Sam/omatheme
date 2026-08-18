@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Ui
+import "."
 
 Rectangle {
   id: root

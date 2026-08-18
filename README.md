@@ -88,19 +88,25 @@ omatheme-publish --push git@github.com:you/omarchy-my-new-theme-theme.git
 
 ## Install
 
-Requires Omarchy (Quattro), Quickshell, ImageMagick, and `jq`. The repo is laid out as a
-[stow](https://www.gnu.org/software/stow/) package:
+Omatheme is an [Omarchy shell plugin](https://learn.omacom.io/2/the-omarchy-manual/32-shell-plugins)
+— it runs as a panel inside the `omarchy-shell` process, so it needs
+Omarchy 4.0+ plus ImageMagick and `inotify-tools`:
 
 ```bash
-git clone https://github.com/Davies-Sam/omatheme ~/Projects/omatheme
-cd ~/Projects && stow -t ~ omatheme
+omarchy plugin add https://github.com/Davies-Sam/omatheme.git --enable
 ```
 
-Launch with `omatheme` (launch-or-focus by window title), or bind it — in
-Quattro's `~/.config/hypr/bindings.lua`:
+Then summon it:
+
+```bash
+omarchy-shell shell toggle davies-sam.omatheme '{}'
+```
+
+or bind that — in Quattro's `~/.config/hypr/bindings.lua`:
 
 ```lua
-hl.bind({ "SUPER", "SHIFT", "CTRL" }, "T", "exec", "omatheme")
+hl.bind({ "SUPER", "SHIFT", "CTRL" }, "T", "exec",
+  "omarchy-shell shell toggle davies-sam.omatheme '{}'")
 ```
 
 and float it in `~/.config/hypr/hyprland.lua`:
@@ -109,8 +115,35 @@ and float it in `~/.config/hypr/hyprland.lua`:
 hl.window_rule({ float = true, match = { title = "^Omatheme$" } })
 ```
 
-(Quickshell hardcodes the app-id `org.quickshell` for every instance, so
+(Quickshell hardcodes the app-id `org.quickshell` for every surface, so
 rules must match on the title.)
+
+Optional extras, for a launcher entry and terminal-friendly helpers —
+from the installed plugin directory:
+
+```bash
+PLUGIN=~/.config/omarchy/plugins/davies-sam.omatheme
+ln -s "$PLUGIN/bin/omatheme" ~/.local/bin/omatheme
+ln -s "$PLUGIN/share/applications/omatheme.desktop" ~/.local/share/applications/
+mkdir -p ~/.local/share/icons/hicolor/scalable/apps ~/.local/share/icons/hicolor/256x256/apps
+ln -s "$PLUGIN/share/icons/hicolor/scalable/apps/omatheme.svg" ~/.local/share/icons/hicolor/scalable/apps/
+ln -s "$PLUGIN/share/icons/hicolor/256x256/apps/omatheme.png" ~/.local/share/icons/hicolor/256x256/apps/
+```
+
+## Developing
+
+Work in a clone, deploy by copy (the plugin folder may not contain
+symlinks, and the shell only hot-reloads real file changes — a restart
+picks up changes reliably):
+
+```bash
+rsync -a --delete --exclude .git ./ ~/.config/omarchy/plugins/davies-sam.omatheme/
+omarchy-restart-shell
+omarchy-shell shell summon davies-sam.omatheme '{}'
+```
+
+`tests/run` exercises every bundled helper end to end on a throwaway
+fork and restores the desktop it started on.
 
 ## Adding a panel
 
@@ -118,7 +151,7 @@ rules must match on the title.)
    processes and action buttons, like `Panels/BorderPanel.qml`.
 2. Add a small `omatheme-<domain>` helper next to the others for the reads
    and writes it needs (`omatheme-lib` has the shared theme plumbing).
-3. Add one entry to `panels` in `shell.qml`. The switcher appears
+3. Add one entry to `panels` in `Omatheme.qml`. The switcher appears
    automatically at two panels.
 
 Development notes and the original build plan live in

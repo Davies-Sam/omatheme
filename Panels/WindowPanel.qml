@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import "../Ui"
 
 // Window chrome that Hyprland owns rather than the theme: border width,
 // corner rounding, gaps and opacity.
@@ -49,7 +49,7 @@ ColumnLayout {
   // ------------------------------------------------------------ processes
   Process {
     id: loader
-    command: ["omatheme-window", "show"]
+    command: [Session.bin("omatheme-window"), "show"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyState(text)
@@ -127,7 +127,7 @@ ColumnLayout {
   }
 
   function apply() {
-    runApplier(["omatheme-window", "set",
+    runApplier([Session.bin("omatheme-window"), "set",
                 "--border-size", String(Math.round(root.values.border_size)),
                 "--rounding", String(Math.round(root.values.rounding)),
                 "--gaps-in", String(Math.round(root.values.gaps_in)),
@@ -142,7 +142,7 @@ ColumnLayout {
   }
 
   function resetToDefault() {
-    runApplier(["omatheme-window", "reset", "--all"])
+    runApplier([Session.bin("omatheme-window"), "reset", "--all"])
     root.dirty = false
   }
 

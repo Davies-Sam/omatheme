@@ -1,5 +1,3 @@
-module qs.Ui
-
 singleton Theme 1.0 Theme.qml
 singleton Session 1.0 Session.qml
 BorderPreview 1.0 BorderPreview.qml

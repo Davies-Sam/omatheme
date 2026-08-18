@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import "../Ui"
 
 // Curate the current theme's background set through omatheme-bg: what the
 // theme ships is authoring and lives here; cycling between backgrounds
@@ -33,7 +33,7 @@ ColumnLayout {
   // ------------------------------------------------------------ processes
   Process {
     id: loader
-    command: ["omatheme-bg", "list"]
+    command: [Session.bin("omatheme-bg"), "list"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyState(text)
@@ -86,17 +86,17 @@ ColumnLayout {
 
   function setBackground(name) {
     root.selected = name
-    runApplier(["omatheme-bg", "set", name])
+    runApplier([Session.bin("omatheme-bg"), "set", name])
   }
 
   function add(arg) {
     if (arg.length === 0) return
-    runApplier(["omatheme-bg", "add", arg])
+    runApplier([Session.bin("omatheme-bg"), "add", arg])
   }
 
   function removeSelected() {
     if (root.selectedEntry && root.selectedEntry.removable)
-      runApplier(["omatheme-bg", "remove", root.selected])
+      runApplier([Session.bin("omatheme-bg"), "remove", root.selected])
   }
 
   // Palette generation is heuristic, so the human stays in the loop: the
@@ -124,7 +124,7 @@ ColumnLayout {
   function generatePalette() {
     if (generator.running || !root.selectedEntry) return
     root.status = ""
-    generator.command = ["omatheme-palette", "generate", root.selectedEntry.path]
+    generator.command = [Session.bin("omatheme-palette"), "generate", root.selectedEntry.path]
     generator.running = true
   }
 

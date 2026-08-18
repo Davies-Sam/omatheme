@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Ui
+import "."
 
 // The text-field chrome every field shares: sunken fill, hairline border,
 // focus ring, optional placeholder. HexField layers hex validation on top;

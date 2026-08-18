@@ -4,14 +4,17 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import "Ui"
 
-// Omatheme -- theme designer for Omarchy Quattro.
+// Omatheme -- theme designer for Omarchy Quattro, packaged as an
+// omarchy-shell panel plugin.
 //
-// The shell owns only what every panel shares: the window, the session state
-// (which theme is current), the tokens the app paints itself with, and the
-// switcher. Each panel is self-contained and talks to its own helper on PATH,
-// so everything the GUI can do is also reachable from a terminal.
+// This root owns only what every panel shares: the plugin lifecycle, the
+// window, the session state (which theme is current), the tokens the app
+// paints itself with, and the switcher. Each panel is self-contained and
+// talks to its own bundled helper (bin/, resolved by Session.bin -- inside
+// the shell nothing puts them on PATH), so everything the GUI can do is
+// also reachable from a terminal.
 //
 // Adding a panel:
 //   1. write Panels/<Name>Panel.qml -- a ColumnLayout owning its own state,
@@ -19,7 +22,7 @@ import qs.Ui
 //   2. add a small `omatheme-<domain>` helper next to omatheme-border for the
 //      reads and writes it needs
 //   3. add one entry to `panels` below
-ShellRoot {
+Item {
   id: root
 
   readonly property var panels: [
@@ -30,10 +33,39 @@ ShellRoot {
   ]
 
   property string panel: "border"
+
+  // ------------------------------------------------------ plugin lifecycle
+  //
+  // The host loads this item on summon, hands the payload to open(), and
+  // calls close() on hide; a user-initiated close must go through
+  // shell.hide so the host's open-panel map stays consistent (the same
+  // contract as the first-party dev-gallery panel). Never Qt.quit() here:
+  // this code runs inside the long-lived omarchy-shell process.
+  property var shell: null
+  property bool closingFromHost: false
+  readonly property bool opened: window.visible
+
+  function open(payloadJson) {
+    closingFromHost = false
+    session.running = true
+    window.visible = true
+  }
+
+  function close() {
+    closingFromHost = true
+    window.visible = false
+    closingFromHost = false
+  }
+
+  function requestClose() {
+    if (shell && typeof shell.hide === "function") shell.hide("davies-sam.omatheme")
+    else window.visible = false
+  }
+
   // ------------------------------------------------------- session state
   Process {
     id: session
-    command: ["omatheme-state"]
+    command: [Session.bin("omatheme-state")]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applySession(text)
@@ -225,21 +257,22 @@ ShellRoot {
     minimumSize: Qt.size(Math.min(Theme.size(420), roomWidth),
                          Math.min(Theme.size(520), roomHeight))
 
+    // Hidden until the host summons us (open() flips it).
+    visible: false
+
     // Growth is automatic, but Qt ignores a smaller implicit size once the
     // compositor has committed one -- shrinking goes through the resizer.
     onImplicitHeightChanged: refit.restart()
-    // Qt.quit, not Quickshell.quit: QuickshellGlobal 0.3.0 has no quit()
-    // method, so the old call threw a TypeError and left a windowless
-    // process holding the instance lock -- which made every later
-    // launch-or-focus exit silently (no window to focus, and the new
-    // qs -n deferred to the zombie instance).
-    onVisibleChanged: if (!visible) Qt.quit()
+    // The window closing by any route the host did not start (compositor
+    // close, Escape) must round-trip through shell.hide, or the host's
+    // open-panel bookkeeping drifts and the next toggle misfires.
+    onVisibleChanged: if (!visible && !root.closingFromHost) root.requestClose()
 
     Item {
       anchors.fill: parent
       focus: true
 
-      Keys.onEscapePressed: Qt.quit()
+      Keys.onEscapePressed: root.requestClose()
 
       ColumnLayout {
         anchors.fill: parent
@@ -339,17 +372,21 @@ ShellRoot {
               return loader.item?.implicitHeight ?? loader.implicitHeight
             }
             // The tallest panel, for the window's own height (see
-            // contentNeed above). itemAt() needs the same reactive-read
-            // discipline as currentImplicit; the per-item implicitHeight
-            // reads keep this current as panels populate.
-            readonly property real tallestImplicit: {
+            // contentNeed above). This was a binding over itemAt() reads;
+            // hosted in omarchy-shell's engine that silently stopped
+            // re-evaluating (the same environment that stomps currentIndex
+            // below), so the delegates push their height changes up and the
+            // stack recomputes instead.
+            property real tallestImplicit: 0
+
+            function recomputeTallest() {
               let tallest = 0
               for (let i = 0; i < panelRepeater.count; i++) {
                 const loader = panelRepeater.itemAt(i)
-                const h = loader?.item?.implicitHeight ?? 0
-                if (h > tallest) tallest = h
+                if (loader && loader.item)
+                  tallest = Math.max(tallest, loader.item.implicitHeight)
               }
-              return tallest
+              tallestImplicit = tallest
             }
             // The content gets its full implicit height -- no "squeeze
             // tolerance". An earlier version subtracted a small slack on the
@@ -359,7 +396,20 @@ ShellRoot {
             // permanently past max scroll.
             width: panelFlick.width
             height: Math.max(panelFlick.height, currentImplicit)
-            currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
+
+            // Hosted in omarchy-shell's engine, StackLayout writes its own
+            // currentIndex while the Repeater populates (each added delegate
+            // leaves the last one current), which silently severs a plain
+            // binding -- standalone this never fired. Drive the index
+            // imperatively and heal any outside write instead.
+            readonly property int desiredIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
+            Component.onCompleted: currentIndex = desiredIndex
+            onDesiredIndexChanged: currentIndex = desiredIndex
+            onCurrentIndexChanged: if (currentIndex !== desiredIndex) Qt.callLater(healIndex)
+
+            function healIndex() {
+              currentIndex = desiredIndex
+            }
 
             Repeater {
               // id is load-bearing: panelStack.currentImplicit reads
@@ -370,6 +420,12 @@ ShellRoot {
                 id: panelLoader
                 required property var modelData
                 source: modelData.source
+                onLoaded: panelStack.recomputeTallest()
+
+                Connections {
+                  target: panelLoader.item
+                  function onImplicitHeightChanged() { panelStack.recomputeTallest() }
+                }
 
                 // A panel file that fails to parse must not be a silent
                 // blank tab; the error itself only lands in Quickshell's log.

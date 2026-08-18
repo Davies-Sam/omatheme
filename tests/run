@@ -14,7 +14,7 @@
 set -u
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
-export PATH="$ROOT/.local/bin:$PATH"
+export PATH="$ROOT/bin:$PATH"
 
 STATE="$HOME/.local/state/omarchy/current"
 USER_THEMES="$HOME/.config/omarchy/themes"

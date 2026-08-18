@@ -139,6 +139,17 @@ these before writing code.
 - Prior review passes deliberately left an ~89-item pre-existing QML style
   backlog (ORD-1 ordering, `var`/`==`) unfixed.
 
+> **Post-milestone note (2026-08-18):** the repo was later restructured
+> into an omarchy-shell **panel plugin** (manifest.json at the root,
+> `Omatheme.qml` entry point, helpers under `bin/`). The stow layout and
+> `qs -c omatheme` below are historical: today you deploy with
+> `rsync -a --delete --exclude .git ./ ~/.config/omarchy/plugins/davies-sam.omatheme/`
+> then `omarchy-restart-shell`, and drive the panel with
+> `omarchy-shell shell summon davies-sam.omatheme '{}'` / `... hide ...`.
+> The hosted engine severs itemAt()-style bindings and stomps
+> StackLayout.currentIndex — push changes imperatively (see Omatheme.qml).
+> Never call Qt.quit() in the panel: it would kill the whole desktop shell.
+
 ### How to test
 
 `tests/run` is the committed helper suite: it exercises every

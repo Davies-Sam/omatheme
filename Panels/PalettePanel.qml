@@ -4,7 +4,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import "../Ui"
 
 // The palette: every color key of the active theme's colors.toml, edited
 // through omatheme-palette.
@@ -72,7 +72,7 @@ ColumnLayout {
   // ------------------------------------------------------------ processes
   Process {
     id: loader
-    command: ["omatheme-palette", "show"]
+    command: [Session.bin("omatheme-palette"), "show"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyState(text)
@@ -157,7 +157,7 @@ ColumnLayout {
     if (previewer.running) return
     root.forkError = ""
     previewer.command = ["bash", "-c",
-      "omatheme-preview regen && omatheme-preview logo"]
+      "\"$1\" regen && \"$1\" logo", "--", Session.bin("omatheme-preview")]
     previewer.running = true
   }
 
@@ -167,7 +167,7 @@ ColumnLayout {
 
   Process {
     id: publisher
-    command: ["omatheme-publish"]
+    command: [Session.bin("omatheme-publish")]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.publishOutput = text.trim()
@@ -193,7 +193,7 @@ ColumnLayout {
   }
 
   function preview() {
-    const command = ["omatheme-palette", "set"]
+    const command = [Session.bin("omatheme-palette"), "set"]
     for (const key in root.edits) {
       command.push("--" + key)
       command.push(root.edits[key])
@@ -208,7 +208,7 @@ ColumnLayout {
   }
 
   function resetToStock() {
-    runApplier(["omatheme-palette", "reset", "--all"])
+    runApplier([Session.bin("omatheme-palette"), "reset", "--all"])
     root.edits = ({})
   }
 
@@ -217,7 +217,7 @@ ColumnLayout {
   // exit.
   function setMode(value) {
     if (value === root.mode) return
-    runApplier(["omatheme-palette", "mode", value])
+    runApplier([Session.bin("omatheme-palette"), "mode", value])
   }
 
   // A generated proposal (from the Backgrounds panel) becomes pending edits

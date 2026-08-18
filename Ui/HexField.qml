@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Ui
+import "."
 
 // Hex entry that only reports colors Qt can actually parse, so a half-typed
 // value never reaches the compositor.

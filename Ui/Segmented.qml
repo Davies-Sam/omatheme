@@ -2,7 +2,7 @@ pragma ComponentBehavior: Bound
 
 import QtQuick
 import QtQuick.Layouts
-import qs.Ui
+import "."
 
 // Two-or-more mutually exclusive options rendered as one pill.
 Rectangle {

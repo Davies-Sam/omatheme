@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.Ui
+import "."
 
 // A labelled slider whose track can paint an arbitrary gradient, so the hue
 // and saturation rows preview the value they are about to set.

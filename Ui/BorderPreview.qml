@@ -1,5 +1,5 @@
 import QtQuick
-import qs.Ui
+import "."
 
 // A mock window drawn with the border being edited. Qt gradients are axis
 // aligned, so the angle is faked the way Hyprland renders it: an oversized

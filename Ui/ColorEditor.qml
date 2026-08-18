@@ -1,6 +1,6 @@
 import QtQuick
 import QtQuick.Layouts
-import qs.Ui
+import "."
 
 // Edits one colour stop: hex in, HSV + alpha sliders out. The component is
 // stateless -- it reports every change and re-reads whatever it is given.

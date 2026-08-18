@@ -2,7 +2,7 @@ import QtQuick
 import QtQuick.Layouts
 import Quickshell
 import Quickshell.Io
-import qs.Ui
+import "../Ui"
 
 // Window border: the colours Hyprland draws around focused and unfocused
 // windows.
@@ -102,7 +102,7 @@ ColumnLayout {
   // ------------------------------------------------------------ processes
   Process {
     id: loader
-    command: ["omatheme-border", "show"]
+    command: [Session.bin("omatheme-border"), "show"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyState(text)
@@ -178,7 +178,7 @@ ColumnLayout {
   }
 
   function apply() {
-    runApplier(["omatheme-border", "set",
+    runApplier([Session.bin("omatheme-border"), "set",
                 "--active", specString(root.active),
                 "--inactive", specString(root.inactive)])
     root.dirty = false
@@ -189,7 +189,7 @@ ColumnLayout {
   }
 
   function resetToTheme() {
-    runApplier(["omatheme-border", "reset", "--all"])
+    runApplier([Session.bin("omatheme-border"), "reset", "--all"])
     root.dirty = false
   }
 

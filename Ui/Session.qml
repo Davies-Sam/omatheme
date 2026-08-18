@@ -8,6 +8,15 @@ import QtQuick
 QtObject {
   id: root
 
+  // The plugin's bundled helpers, by absolute path: inside omarchy-shell
+  // nothing puts bin/ on PATH, so every Process command resolves its
+  // executable through here. Anchored to this file's location (Ui/).
+  readonly property string binDir: {
+    const url = Qt.resolvedUrl("../bin/").toString()
+    return url.startsWith("file://") ? decodeURIComponent(url.substring(7)) : url
+  }
+  function bin(name) { return binDir + name }
+
   property string slug: ""
   property string name: "…"
 
