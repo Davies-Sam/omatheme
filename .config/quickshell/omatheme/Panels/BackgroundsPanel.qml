@@ -99,6 +99,35 @@ ColumnLayout {
       runApplier(["omatheme-bg", "remove", root.selected])
   }
 
+  // Palette generation is heuristic, so the human stays in the loop: the
+  // proposal lands in the Palette panel as pending edits (nothing on disk)
+  // and the user eyeballs the swatches before pressing Preview there.
+  Process {
+    id: generator
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          Session.paletteProposed(JSON.parse(text))
+          Session.panelRequested("palette")
+        } catch (error) {
+          root.status = "palette generation produced no usable result"
+        }
+      }
+    }
+    stderr: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: if (text.trim().length > 0) root.status = text.trim()
+    }
+  }
+
+  function generatePalette() {
+    if (generator.running || !root.selectedEntry) return
+    root.status = ""
+    generator.command = ["omatheme-palette", "generate", root.selectedEntry.path]
+    generator.running = true
+  }
+
   Component.onCompleted: loader.running = true
 
   // ------------------------------------------------------------------- ui
@@ -206,6 +235,12 @@ ColumnLayout {
       label: "Remove"
       enabled: root.selectedEntry !== null && root.selectedEntry.removable
       onClicked: root.removeSelected()
+    }
+
+    TextButton {
+      label: "Palette from this background"
+      enabled: root.selectedEntry !== null
+      onClicked: root.generatePalette()
     }
 
     Item { Layout.fillWidth: true }

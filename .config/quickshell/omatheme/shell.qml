@@ -29,7 +29,10 @@ ShellRoot {
     { key: "bg", label: "Backgrounds", source: "Panels/BackgroundsPanel.qml" }
   ]
 
-  property string panel: "border"  Process {
+  property string panel: "border"
+
+  // ------------------------------------------------------- session state
+  Process {
     id: session
     command: ["omatheme-state"]
     stdout: StdioCollector {
@@ -53,10 +56,12 @@ ShellRoot {
     }
   }
 
-  // A panel that writes a theme asks everyone to re-read.
+  // A panel that writes a theme asks everyone to re-read; a panel can also
+  // hand the user over to a sibling tab.
   Connections {
     target: Session
     function onReloaded() { session.running = true }
+    function onPanelRequested(key) { root.panel = key }
   }
 
   // --------------------------------------------------------- text scaling

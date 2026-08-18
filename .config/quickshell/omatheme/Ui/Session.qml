@@ -17,4 +17,11 @@ QtObject {
   property bool ready: false
 
   signal reloaded()
+
+  // Cross-panel handoffs, since panels are self-contained and never talk to
+  // each other directly: a generated palette proposal ({ mode, colors }) for
+  // the Palette panel to stage as pending edits, and a request for the shell
+  // to switch tabs.
+  signal paletteProposed(var proposal)
+  signal panelRequested(string key)
 }

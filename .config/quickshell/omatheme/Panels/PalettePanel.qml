@@ -216,6 +216,22 @@ ColumnLayout {
     runApplier(["omatheme-palette", "mode", value])
   }
 
+  // A generated proposal (from the Backgrounds panel) becomes pending edits
+  // only -- the same staging as hand edits, so nothing touches disk until
+  // the user judges the swatches and presses Preview.
+  Connections {
+    target: Session
+    function onPaletteProposed(proposal) {
+      var next = {}
+      var proposed = (proposal && proposal.colors) || ({})
+      for (var key in proposed) {
+        if (root.colors[key] !== undefined && root.colors[key] !== proposed[key])
+          next[key] = proposed[key]
+      }
+      root.edits = next
+    }
+  }
+
   Component.onCompleted: loader.running = true
 
   // ------------------------------------------------------------------- ui

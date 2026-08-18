@@ -233,7 +233,7 @@ existing palette.
       **Done when:** generate on two contrasting wallpapers produces valid
       full palettes (every key a hex, mode sensible for each), and --apply
       on a fork re-themes the desktop without hand editing.
-- [ ] **6b. UI hook.** In the Backgrounds panel: "Palette from this
+- [x] **6b. UI hook.** In the Backgrounds panel: "Palette from this
       background" on the selected background, which fills the Palette
       panel's pending edits (not the disk) so the user can eyeball the
       swatches and press Preview themselves. Generation quality is
