@@ -168,7 +168,7 @@ switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
 
 ## Task 3 — Contrast hints
 
-- [ ] **3a. WCAG ratio in the Palette panel.** When a key is selected, show
+- [x] **3a. WCAG ratio in the Palette panel.** When a key is selected, show
       the contrast ratio against the theme's `background` (for foreground-
       ish keys) or against `foreground` (for `*background*` keys), computed
       in QML from the *pending* value so it updates while editing. Show the

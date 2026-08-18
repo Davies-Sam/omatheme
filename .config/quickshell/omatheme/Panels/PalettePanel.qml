@@ -43,6 +43,32 @@ ColumnLayout {
     root.edits = next
   }
 
+  // ------------------------------------------------------------- contrast
+  //
+  // WCAG 2 relative luminance and contrast ratio, computed from the pending
+  // value so the hint tracks an edit before Preview. Background-ish keys
+  // need to read against the foreground; everything else against the
+  // background.
+  function luminance(hex) {
+    var c = Qt.color(hex)
+    function lin(v) {
+      return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4)
+    }
+    return 0.2126 * lin(c.r) + 0.7152 * lin(c.g) + 0.0722 * lin(c.b)
+  }
+
+  function contrast(a, b) {
+    var la = luminance(a)
+    var lb = luminance(b)
+    return (Math.max(la, lb) + 0.05) / (Math.min(la, lb) + 0.05)
+  }
+
+  readonly property string contrastPeer:
+    selected.indexOf("background") >= 0 ? "foreground" : "background"
+  readonly property real contrastRatio:
+    selected !== "" && colors[contrastPeer] !== undefined
+      ? contrast(valueOf(selected), valueOf(contrastPeer)) : 0
+
   // ------------------------------------------------------------ processes
   Process {
     id: loader
@@ -196,14 +222,30 @@ ColumnLayout {
     }
   }
 
-  Text {
+  RowLayout {
     Layout.fillWidth: true
-    text: root.selected + (root.edits[root.selected] !== undefined ? "  (edited)" : "")
-    color: Theme.foreground
-    font.family: Theme.fontFamily
-    font.pixelSize: Theme.size(12)
-    font.bold: true
-    elide: Text.ElideRight
+    spacing: 8
+
+    Text {
+      Layout.fillWidth: true
+      text: root.selected + (root.edits[root.selected] !== undefined ? "  (edited)" : "")
+      color: Theme.foreground
+      font.family: Theme.fontFamily
+      font.pixelSize: Theme.size(12)
+      font.bold: true
+      elide: Text.ElideRight
+    }
+
+    // Readability hint: quiet when it passes, louder as it degrades.
+    Text {
+      visible: root.contrastRatio > 0
+      text: root.contrastRatio.toFixed(1) + ":1 vs " + root.contrastPeer
+      color: root.contrastRatio >= 4.5 ? Theme.dim
+        : root.contrastRatio >= 3 ? Theme.value("yellow", "#e0af68")
+        : Theme.value("red", "#f7768e")
+      font.family: Theme.fontFamily
+      font.pixelSize: Theme.size(11)
+    }
   }
 
   ColorEditor {

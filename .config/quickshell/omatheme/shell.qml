@@ -29,9 +29,7 @@ ShellRoot {
     { key: "bg", label: "Backgrounds", source: "Panels/BackgroundsPanel.qml" }
   ]
 
-  property string panel: "border"
-
-  // ------------------------------------------------------- session state
+  property string panel: "border"  // ------------------------------------------------------- session state
   Process {
     id: session
     command: ["omatheme-state"]
@@ -257,6 +255,9 @@ ShellRoot {
             currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
 
             Repeater {
+              // id is load-bearing: panelStack.currentImplicit reads
+              // count/itemAt through it. Do not strip it with a test rig.
+              id: panelRepeater
               model: root.panels
               Loader {
                 id: panelLoader
