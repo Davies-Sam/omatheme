@@ -141,8 +141,14 @@ these before writing code.
 
 ### How to test
 
-The app cannot be clicked from a terminal. Verify by driving the helper
-directly *and* by looking at the result:
+`tests/run` is the committed helper suite: it exercises every
+omatheme-* helper on a throwaway fork, restores the desktop it started
+on, and prints one PASS/FAIL line per check (desktop-dependent checks
+SKIP when the screen cannot be captured). Run it after any helper
+change.
+
+The app cannot be clicked from a terminal. Verify UI work by driving the
+helper directly *and* by looking at the result:
 
 ```bash
 qs -c omatheme &                     # launch (QML errors on stdout)
@@ -364,7 +370,7 @@ fork still carries.
 The "helper test suite" so far has been ad-hoc. Commit it so a fresh
 session (or a loop) can verify without reinventing it.
 
-- [ ] **11a. `tests/run`.** A bash suite exercising every helper end to end
+- [x] **11a. `tests/run`.** A bash suite exercising every helper end to end
       on a throwaway fork: fork → palette set / mode / generate → bg add
       and remove (use a local file; no network) → unpin → preview regen
       and logo → publish into a temp dir → `omarchy theme install` from the

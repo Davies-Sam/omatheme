@@ -1,0 +1,210 @@
+#!/bin/bash
+
+# Omatheme's helper test suite. Exercises every omatheme-* helper end to
+# end on a throwaway fork of the current theme, then restores the desktop
+# to exactly the theme and background it started on. One PASS/FAIL line
+# per check, non-zero exit on any failure.
+#
+# Checks that need a live compositor (grim, hyprctl) are marked
+# desktop-dependent and SKIP cleanly when headless. Everything mutating
+# happens on the throwaway fork or is round-tripped byte-identically
+# (looknfeel.lua), so a green run leaves `git status` clean both here and
+# in the dotfiles repo that owns looknfeel.lua.
+
+set -u
+
+ROOT=$(cd "$(dirname "$0")/.." && pwd)
+export PATH="$ROOT/.local/bin:$PATH"
+
+STATE="$HOME/.local/state/omarchy/current"
+USER_THEMES="$HOME/.config/omarchy/themes"
+FORK="omatheme-test"
+DUP="omatheme-test-dup"
+LOOKNFEEL="$HOME/.config/hypr/looknfeel.lua"
+TMP=$(mktemp -d)
+
+pass=0 fail=0 skipped=0
+ok() { echo "PASS $1"; ((pass += 1)); }
+bad() { echo "FAIL $1"; ((fail += 1)); }
+skip() { echo "SKIP $1 (needs a live desktop)"; ((skipped += 1)); }
+# Run a named check: t <name> <command...>
+t() {
+  local name=$1
+  shift
+  if "$@" >/dev/null 2>&1; then ok "$name"; else bad "$name"; fi
+}
+
+for dep in jq magick git omarchy; do
+  command -v "$dep" >/dev/null || { echo "missing dependency: $dep"; exit 1; }
+done
+
+# "Desktop available" means screen capture actually works, not merely
+# that the tools exist: with the display asleep or the session locked,
+# screencopy produces no frame and grim blocks forever. Probe it under a
+# timeout so those runs SKIP instead of hanging.
+DESKTOP=no
+if [[ ${WAYLAND_DISPLAY:-} ]] && command -v grim >/dev/null && command -v hyprctl >/dev/null; then
+  timeout 5 grim "$TMP/desktop-probe.png" >/dev/null 2>&1 && DESKTOP=yes
+fi
+
+orig_theme=$(cat "$STATE/theme.name")
+orig_bg=$(readlink -f "$STATE/background" 2>/dev/null || true)
+orig_looknfeel=$(sha256sum "$LOOKNFEEL" 2>/dev/null | cut -d' ' -f1)
+
+[[ -e $USER_THEMES/$FORK ]] && { echo "leftover $USER_THEMES/$FORK from a previous run; remove it first"; exit 1; }
+
+# Whatever happens, put the desktop back: original theme, original
+# background, no test themes.
+restore() {
+  omarchy theme set "$orig_theme" >/dev/null 2>&1
+  rm -rf "$USER_THEMES/$FORK" "$USER_THEMES/$DUP" "$TMP"
+  [[ -f $orig_bg ]] && omarchy theme bg set "$orig_bg" >/dev/null 2>&1
+}
+trap restore EXIT
+
+# ----------------------------------------------------------- state + fork
+t "state prints JSON with a slug" \
+  bash -c 'omatheme-state | jq -e ".slug | length > 0"'
+
+t "fork creates the theme copy" \
+  bash -c "omatheme-palette fork $FORK && [[ -f $USER_THEMES/$FORK/colors.toml ]]"
+
+t "fork carries no pins" \
+  bash -c "! compgen -G '$USER_THEMES/$FORK/shell.*.toml' && [[ ! -e $USER_THEMES/$FORK/keyboard.rgb ]]"
+
+omarchy theme set "$FORK" >/dev/null 2>&1 || { echo "cannot switch to the test fork; aborting"; exit 1; }
+
+# ------------------------------------------------------------- palette
+colors="$USER_THEMES/$FORK/colors.toml"
+t "palette show sees the fork as editable" \
+  bash -c 'omatheme-palette show | jq -e ".editable == true"'
+
+orig_accent=$(grep -oP '^accent\s*=\s*"\K[^"]*' "$colors")
+sha_before=$(sha256sum "$colors" | cut -d' ' -f1)
+t "palette set lands in colors.toml" \
+  bash -c "omatheme-palette set --accent '#123456' && grep -q 'accent = \"#123456\"' $colors"
+omatheme-palette set --accent "$orig_accent" >/dev/null 2>&1
+t "palette set round-trips byte-identically" \
+  bash -c "[[ \$(sha256sum $colors | cut -d' ' -f1) == $sha_before ]]"
+
+orig_mode=$(omatheme-palette mode)
+flip=$([[ $orig_mode == dark ]] && echo light || echo dark)
+t "mode flips" bash -c "omatheme-palette mode $flip && [[ \$(omatheme-palette mode) == $flip ]]"
+omatheme-palette mode "$orig_mode" >/dev/null 2>&1
+t "mode round-trips byte-identically" \
+  bash -c "[[ \$(sha256sum $colors | cut -d' ' -f1) == $sha_before ]]"
+
+wallpaper=$(find "$USER_THEMES/$FORK/backgrounds" -type f 2>/dev/null | head -1)
+if [[ $wallpaper ]]; then
+  t "generate proposes a full valid palette" \
+    bash -c "omatheme-palette generate '$wallpaper' | jq -e '
+      (.mode == \"dark\" or .mode == \"light\") and
+      (.colors | length >= 20) and
+      (.colors | to_entries | all(.value | test(\"^#[0-9a-f]{6}\$\")))'"
+else
+  bad "generate proposes a full valid palette (fork has no backgrounds)"
+fi
+
+# ------------------------------------------------------------- border
+orig_active=$(omatheme-border show | jq -r '.active')
+t "border set lands in colors.toml" \
+  bash -c "omatheme-border set --active 'rgba(33ccffee)' && grep -q 'hyprland_active_border = \"rgba(33ccffee)\"' $colors"
+omatheme-border set --active "$orig_active" >/dev/null 2>&1
+t "border set round-trips byte-identically" \
+  bash -c "[[ \$(sha256sum $colors | cut -d' ' -f1) == $sha_before ]]"
+
+# ------------------------------------------------------------- window
+# omatheme-window previews through hyprctl, and its file writes must
+# round-trip looknfeel.lua byte-identically -- verified at the end for
+# every run, here only exercised with a compositor to talk to.
+if [[ $DESKTOP == yes ]]; then
+  orig_rounding=$(omatheme-window show | jq -r '.rounding')
+  # `show` reports the effective value even when the file leaves the key
+  # implicit; a byte-identical round trip must restore the same way --
+  # set back an explicit key, reset an implicit one.
+  had_rounding=no
+  grep -q 'rounding' "$LOOKNFEEL" && had_rounding=yes
+  t "window set lands in looknfeel.lua" \
+    bash -c "omatheme-window set --rounding 11 && grep -q 'rounding = 11' $LOOKNFEEL"
+  if [[ $had_rounding == yes ]]; then
+    omatheme-window set --rounding "$orig_rounding" >/dev/null 2>&1
+  else
+    omatheme-window reset --rounding >/dev/null 2>&1
+  fi
+  t "window set round-trips looknfeel.lua byte-identically" \
+    bash -c "[[ \$(sha256sum $LOOKNFEEL | cut -d' ' -f1) == $orig_looknfeel ]]"
+else
+  skip "window set lands in looknfeel.lua"
+  skip "window set round-trips looknfeel.lua byte-identically"
+fi
+
+# ------------------------------------------------------------- backgrounds
+if [[ $wallpaper ]]; then
+  cp "$wallpaper" "$TMP/omatheme-test-added.png"
+  t "bg add copies a local file into the fork" \
+    bash -c "omatheme-bg add '$TMP/omatheme-test-added.png' && [[ -f $USER_THEMES/$FORK/backgrounds/omatheme-test-added.png ]]"
+  t "bg list sees the added file" \
+    bash -c "omatheme-bg list | jq -e '.backgrounds[] | select(.name == \"omatheme-test-added.png\")'"
+  t "bg remove deletes it" \
+    bash -c "omatheme-bg remove omatheme-test-added.png && [[ ! -e $USER_THEMES/$FORK/backgrounds/omatheme-test-added.png ]]"
+else
+  bad "bg add copies a local file into the fork (fork has no backgrounds)"
+  bad "bg list sees the added file"
+  bad "bg remove deletes it"
+fi
+
+# ------------------------------------------------------------- unpin
+printf 'text = "#ffffff"\n' >"$USER_THEMES/$FORK/shell.lock.toml"
+printf 'ff00ff\n' >"$USER_THEMES/$FORK/keyboard.rgb"
+t "unpin removes planted pins" \
+  bash -c "omatheme-palette unpin && [[ ! -e $USER_THEMES/$FORK/shell.lock.toml && ! -e $USER_THEMES/$FORK/keyboard.rgb ]]"
+t "second unpin is a no-op" \
+  bash -c "omatheme-palette unpin | grep -q 'nothing pinned'"
+
+# ------------------------------------------------------------- previews
+if [[ $DESKTOP == yes ]]; then
+  t "preview regen writes both captures at stock dimensions" \
+    bash -c "timeout 60 omatheme-preview regen &&
+      [[ \$(magick identify -format '%wx%h' $USER_THEMES/$FORK/preview.png) == 1800x1012 ]] &&
+      [[ \$(magick identify -format '%wx%h' $USER_THEMES/$FORK/preview-unlock.png) == 1920x1080 ]]"
+else
+  skip "preview regen writes both captures at stock dimensions"
+fi
+
+t "logo renders a transparent 800x188 wordmark" \
+  bash -c "omatheme-preview logo &&
+    [[ \$(magick identify -format '%wx%h' $USER_THEMES/$FORK/unlock.png) == 800x188 ]] &&
+    magick $USER_THEMES/$FORK/unlock.png -alpha extract -format '%[fx:mean]' info: | grep -qv '^0\$'"
+
+# ------------------------------------------------------------- publish
+t "publish commits the fork and warns about inherited editor configs" \
+  bash -c "out=\$(omatheme-publish) &&
+    git -C $USER_THEMES/$FORK rev-parse HEAD &&
+    grep -q 'warning: neovim.lua' <<<\"\$out\" &&
+    grep -q 'To share it' <<<\"\$out\""
+
+t "the published repo installs as a working duplicate" \
+  bash -c "git clone -q $USER_THEMES/$FORK $TMP/omarchy-$DUP-theme &&
+    omarchy theme install $TMP/omarchy-$DUP-theme >/dev/null &&
+    [[ -f $USER_THEMES/$DUP/colors.toml ]]"
+
+omarchy theme set "$FORK" >/dev/null 2>&1
+rm -rf "$USER_THEMES/$DUP"
+
+# ------------------------------------------------------------- restore
+omarchy theme set "$orig_theme" >/dev/null 2>&1
+rm -rf "$USER_THEMES/$FORK"
+[[ -f $orig_bg ]] && omarchy theme bg set "$orig_bg" >/dev/null 2>&1
+
+t "the original theme is running again" \
+  bash -c "[[ \$(cat $STATE/theme.name) == $orig_theme ]]"
+t "the original background is back" \
+  bash -c "[[ \$(readlink -f $STATE/background) == $orig_bg ]]"
+t "looknfeel.lua ends byte-identical" \
+  bash -c "[[ \$(sha256sum $LOOKNFEEL | cut -d' ' -f1) == $orig_looknfeel ]]"
+t "no test themes remain" \
+  bash -c "[[ ! -e $USER_THEMES/$FORK && ! -e $USER_THEMES/$DUP ]]"
+
+echo
+echo "$pass passed, $fail failed, $skipped skipped"
+((fail == 0))
