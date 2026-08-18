@@ -183,7 +183,7 @@ switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
 A fork keeps its parent's `preview.png`/`preview-unlock.png`, so it shows
 the wrong face in Omarchy's theme switcher forever.
 
-- [ ] **4a. `omatheme-preview` helper.** `regen` captures the current
+- [x] **4a. `omatheme-preview` helper.** `regen` captures the current
       desktop with grim and produces `preview.png` (1800x1012) and
       `preview-unlock.png` (1920x1080) via magick resize/crop into the
       current theme's writable dir (user themes only — refuse stock themes

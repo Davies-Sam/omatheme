@@ -1,0 +1,109 @@
+#!/bin/bash
+
+# Omatheme's preview domain: the images Omarchy's theme switcher and lock
+# screen show for a theme. A fork copies its parent's previews, so a
+# finished fork advertises the wrong look forever unless they are
+# regenerated from the desktop actually running the theme.
+#
+# `regen` captures the screen with grim and produces preview.png (1800x1012)
+# and preview-unlock.png (1920x1080) -- the stock themes' dimensions -- via
+# a cover-resize and center-crop. Only user-owned themes are writable;
+# stock themes are refused with a pointer to fork first.
+#
+# `show` reports the preview files and, by comparing checksums against
+# every other installed theme, whether they are still another theme's copy.
+
+set -euo pipefail
+
+source "$(dirname "$0")/omatheme-lib"
+
+theme_owned() {
+  [[ -d $USER_THEMES/$1 && ! -d $OMARCHY/themes/$1 ]]
+}
+
+cmd_regen() {
+  local slug dir shot
+  slug=$(current_slug)
+  theme_owned "$slug" || die "theme '$slug' is a stock theme; fork it first (omatheme-palette fork <new-slug>)"
+  dir="$USER_THEMES/$slug"
+
+  shot=$(mktemp --suffix=.png)
+  # Expand now: `shot` is function-local and would be unbound by the time
+  # an EXIT trap fires at script scope.
+  trap "rm -f '$shot'" EXIT
+  grim "$shot"
+
+  magick "$shot" -resize 1800x1012^ -gravity center -extent 1800x1012 "$dir/preview.png"
+  magick "$shot" -resize 1920x1080^ -gravity center -extent 1920x1080 "$dir/preview-unlock.png"
+
+  echo "$dir/preview.png"
+  echo "$dir/preview-unlock.png"
+}
+
+cmd_show() {
+  local slug
+  slug=$(current_slug)
+
+  python3 - "$slug" "$USER_THEMES" "$OMARCHY/themes" <<'PY'
+import hashlib
+import json
+import os
+import sys
+
+slug, user_themes, stock_themes = sys.argv[1:4]
+
+def sha(path):
+    try:
+        with open(path, 'rb') as handle:
+            return hashlib.sha256(handle.read()).hexdigest()
+    except OSError:
+        return None
+
+def theme_dir(name):
+    user = os.path.join(user_themes, name)
+    return user if os.path.isdir(user) else os.path.join(stock_themes, name)
+
+others = {}
+for root in (user_themes, stock_themes):
+    if not os.path.isdir(root):
+        continue
+    for name in os.listdir(root):
+        if name == slug:
+            continue
+        for kind in ("preview.png", "preview-unlock.png"):
+            digest = sha(os.path.join(root, name, kind))
+            if digest:
+                others.setdefault(digest, name)
+
+out = {}
+for kind in ("preview.png", "preview-unlock.png"):
+    path = os.path.join(theme_dir(slug), kind)
+    digest = sha(path)
+    out[kind] = {
+        "path": path,
+        "exists": digest is not None,
+        # Non-null means this file is byte-identical to another theme's --
+        # i.e. still the parent's copy, not this theme's own face.
+        "copyOf": others.get(digest) if digest else None,
+    }
+
+print(json.dumps(out))
+PY
+}
+
+case ${1:-} in
+regen) shift; cmd_regen "$@" ;;
+show) shift; cmd_show "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omatheme-preview show
+  omatheme-preview regen
+
+regen captures the current desktop and writes preview.png (1800x1012)
+and preview-unlock.png (1920x1080) into the current theme's directory.
+User-owned themes only -- fork a stock theme first.
+USAGE
+  exit 1
+  ;;
+esac
