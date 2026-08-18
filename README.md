@@ -89,12 +89,25 @@ omatheme-publish --push git@github.com:you/omarchy-my-new-theme-theme.git
 ## Install
 
 Omatheme is an [Omarchy shell plugin](https://learn.omacom.io/2/the-omarchy-manual/32-shell-plugins)
-— it runs as a panel inside the `omarchy-shell` process, so it needs
-Omarchy 4.0+ plus ImageMagick and `inotify-tools`:
+— it runs as a panel inside the `omarchy-shell` process.
 
 ```bash
 omarchy plugin add https://github.com/Davies-Sam/omatheme.git --enable
 ```
+
+External dependencies: Omarchy 4.0+ (Quattro), plus `imagemagick`
+(palette generation, previews, the boot logo) and `inotify-tools`
+(following external theme switches). `jq` and `git` are already Omarchy
+core dependencies.
+
+Remove it the same way any shell plugin goes:
+
+```bash
+omarchy plugin remove davies-sam.omatheme
+```
+
+Removal disables the panel first and never touches your themes — the
+forks you made live in `~/.config/omarchy/themes/` and stay yours.
 
 Then summon it:
 
