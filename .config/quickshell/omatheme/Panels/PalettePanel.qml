@@ -141,7 +141,10 @@ ColumnLayout {
   property string forkError: ""
 
   // Previews come from the desktop itself; the helper dodges this window
-  // off-screen during the capture and restores it.
+  // off-screen during the capture and restores it. The boot logo is folded
+  // into the same action rather than given its own button: both exist so a
+  // fork stops advertising its parent's face, and "regenerate previews"
+  // is that whole job.
   Process {
     id: previewer
     stderr: StdioCollector {
@@ -153,7 +156,8 @@ ColumnLayout {
   function regenPreviews() {
     if (previewer.running) return
     root.forkError = ""
-    previewer.command = ["omatheme-preview", "regen"]
+    previewer.command = ["bash", "-c",
+      "omatheme-preview regen && omatheme-preview logo"]
     previewer.running = true
   }
 

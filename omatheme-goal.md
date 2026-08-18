@@ -334,8 +334,11 @@ synchronization (see the milestone 3 facts above).
       and non-empty glyph pixels (verify by reading it back — `magick
       identify` plus a histogram, not just existence), and differs from the
       parent's.
-- [ ] **9b. UI hook.** Fold into the existing "Regenerate previews" action
+- [x] **9b. UI hook.** Fold into the existing "Regenerate previews" action
       or add a sibling button — decide while building and write down which.
+      *Decision: folded into "Regenerate previews" — both assets exist so a
+      fork stops advertising its parent's face, and that button is that
+      whole job; a second button would split one intent in two.*
       **Done when:** the flow on a fork produces the fork's own logo.
 
 ## Task 10 — Publish preflight
