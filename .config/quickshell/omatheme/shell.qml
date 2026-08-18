@@ -199,13 +199,18 @@ ShellRoot {
     // Growth is automatic, but Qt ignores a smaller implicit size once the
     // compositor has committed one -- shrinking goes through the resizer.
     onImplicitHeightChanged: refit.restart()
-    onVisibleChanged: if (!visible) Quickshell.quit()
+    // Qt.quit, not Quickshell.quit: QuickshellGlobal 0.3.0 has no quit()
+    // method, so the old call threw a TypeError and left a windowless
+    // process holding the instance lock -- which made every later
+    // launch-or-focus exit silently (no window to focus, and the new
+    // qs -n deferred to the zombie instance).
+    onVisibleChanged: if (!visible) Qt.quit()
 
     Item {
       anchors.fill: parent
       focus: true
 
-      Keys.onEscapePressed: Quickshell.quit()
+      Keys.onEscapePressed: Qt.quit()
 
       ColumnLayout {
         anchors.fill: parent
