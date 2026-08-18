@@ -118,7 +118,7 @@ Controls: `general.border_size`, `decoration.rounding`, `general.gaps_in`,
       `set --rounding 12` changes only that line in `looknfeel.lua`; the
       workspace rule and the file's comments survive; `hyprctl configerrors`
       is empty afterwards.
-- [ ] **1b. `Panels/WindowPanel.qml`.** Sliders using the existing
+- [x] **1b. `Panels/WindowPanel.qml`.** Sliders using the existing
       `LabeledSlider`, live preview via `hyprctl eval`, and the same
       Apply / Revert / Theme default action row as `BorderPanel.qml`. Revert
       is `hyprctl reload`.
