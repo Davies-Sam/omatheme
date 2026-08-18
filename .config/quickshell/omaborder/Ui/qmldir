@@ -1,0 +1,9 @@
+module qs.Ui
+
+singleton Theme 1.0 Theme.qml
+BorderPreview 1.0 BorderPreview.qml
+ColorEditor 1.0 ColorEditor.qml
+HexField 1.0 HexField.qml
+LabeledSlider 1.0 LabeledSlider.qml
+Segmented 1.0 Segmented.qml
+TextButton 1.0 TextButton.qml

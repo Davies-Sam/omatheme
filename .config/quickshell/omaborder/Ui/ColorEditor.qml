@@ -1,0 +1,100 @@
+import QtQuick
+import QtQuick.Layouts
+import qs.Ui
+
+// Edits one colour stop: hex in, HSV + alpha sliders out. The component is
+// stateless -- it reports every change and re-reads whatever it is given.
+ColumnLayout {
+  id: root
+
+  property color value: "#ffffff"
+  property real alpha: 1.0
+  signal changed(color value, real alpha)
+
+  spacing: 10
+
+  // Qt reports hue as -1 for greys; holding the last real hue keeps the
+  // slider from jumping to red when saturation hits zero.
+  property real hue: 0
+  onValueChanged: if (value.hsvHue >= 0) hue = value.hsvHue
+
+  function emit(h, s, v, a) {
+    root.changed(Qt.hsva(Math.max(0, Math.min(0.99999, h)),
+                         Math.max(0, Math.min(1, s)),
+                         Math.max(0, Math.min(1, v)), 1), a)
+  }
+
+  RowLayout {
+    Layout.fillWidth: true
+    spacing: 10
+
+    Rectangle {
+      Layout.preferredWidth: 30
+      Layout.preferredHeight: 30
+      radius: Theme.radius
+      color: root.value
+      border.width: 1
+      border.color: Qt.rgba(Theme.foreground.r, Theme.foreground.g, Theme.foreground.b, 0.25)
+    }
+
+    HexField {
+      value: root.value.toString().substring(0, 7)
+      onEdited: hex => root.changed(hex, root.alpha)
+    }
+
+    Item { Layout.fillWidth: true }
+  }
+
+  LabeledSlider {
+    Layout.fillWidth: true
+    label: "Hue"
+    value: root.hue
+    readout: Math.round(root.hue * 360) + "°"
+    trackStops: [
+      GradientStop { position: 0.00; color: "#ff0000" },
+      GradientStop { position: 0.17; color: "#ffff00" },
+      GradientStop { position: 0.33; color: "#00ff00" },
+      GradientStop { position: 0.50; color: "#00ffff" },
+      GradientStop { position: 0.67; color: "#0000ff" },
+      GradientStop { position: 0.83; color: "#ff00ff" },
+      GradientStop { position: 1.00; color: "#ff0000" }
+    ]
+    onMoved: v => root.emit(v, root.value.hsvSaturation, root.value.hsvValue, root.alpha)
+  }
+
+  LabeledSlider {
+    Layout.fillWidth: true
+    label: "Sat"
+    value: root.value.hsvSaturation
+    readout: Math.round(root.value.hsvSaturation * 100) + "%"
+    trackStops: [
+      GradientStop { position: 0.0; color: Qt.hsva(root.hue, 0, root.value.hsvValue, 1) },
+      GradientStop { position: 1.0; color: Qt.hsva(root.hue, 1, root.value.hsvValue, 1) }
+    ]
+    onMoved: v => root.emit(root.hue, v, root.value.hsvValue, root.alpha)
+  }
+
+  LabeledSlider {
+    Layout.fillWidth: true
+    label: "Val"
+    value: root.value.hsvValue
+    readout: Math.round(root.value.hsvValue * 100) + "%"
+    trackStops: [
+      GradientStop { position: 0.0; color: "#000000" },
+      GradientStop { position: 1.0; color: Qt.hsva(root.hue, root.value.hsvSaturation, 1, 1) }
+    ]
+    onMoved: v => root.emit(root.hue, root.value.hsvSaturation, v, root.alpha)
+  }
+
+  LabeledSlider {
+    Layout.fillWidth: true
+    label: "Alpha"
+    value: root.alpha
+    readout: Math.round(root.alpha * 100) + "%"
+    trackStops: [
+      GradientStop { position: 0.0; color: Qt.rgba(root.value.r, root.value.g, root.value.b, 0) },
+      GradientStop { position: 1.0; color: Qt.rgba(root.value.r, root.value.g, root.value.b, 1) }
+    ]
+    onMoved: v => root.changed(root.value, v)
+  }
+}

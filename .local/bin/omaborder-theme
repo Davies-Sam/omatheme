@@ -1,0 +1,212 @@
+#!/bin/bash
+
+# Read and write the current Omarchy theme's window-border colors.
+#
+# Quattro derives every border from the active theme's colors.toml
+# (`hyprland_active_border` / `hyprland_inactive_border`), falling back to a
+# solid `accent` when neither is set -- see
+# $OMARCHY_PATH/default/themed/hyprland.lua.tpl. Editing that key and
+# re-applying the theme is therefore the only change that reaches Hyprland,
+# the bar, notifications and the lock screen at once.
+#
+# Stock themes are never edited in place. A stock theme is copied into
+# ~/.config/omarchy/themes/<slug>/ first, which is Omarchy's documented
+# overlay: the stock files are laid down and the user's win on top.
+
+set -euo pipefail
+
+OMARCHY="${OMARCHY_PATH:-/usr/share/omarchy}"
+STATE="$HOME/.local/state/omarchy/current"
+USER_THEMES="$HOME/.config/omarchy/themes"
+
+# The template's own fallbacks, so `show` reports what is actually on screen
+# rather than an empty string when a theme sets no border of its own.
+DEFAULT_INACTIVE="rgba(595959aa)"
+
+die() {
+  echo "omaborder-theme: $1" >&2
+  exit 1
+}
+
+current_slug() {
+  [[ -r $STATE/theme.name ]] || die "no current theme (is Omarchy set up?)"
+  tr -d '[:space:]' <"$STATE/theme.name"
+}
+
+# The file the current theme's colors are read from, preferring a user theme
+# or an existing overlay over the stock copy.
+source_colors() {
+  local slug=$1
+  if [[ -f $USER_THEMES/$slug/colors.toml ]]; then
+    echo "$USER_THEMES/$slug/colors.toml"
+  elif [[ -f $OMARCHY/themes/$slug/colors.toml ]]; then
+    echo "$OMARCHY/themes/$slug/colors.toml"
+  else
+    die "theme '$slug' has no colors.toml"
+  fi
+}
+
+# Where a write has to land. Creating the overlay copies the stock palette so
+# the theme keeps rendering identically apart from the border being set.
+writable_colors() {
+  local slug=$1 target="$USER_THEMES/$slug/colors.toml"
+  if [[ ! -f $target ]]; then
+    [[ -f $OMARCHY/themes/$slug/colors.toml ]] || die "theme '$slug' has no colors.toml"
+    mkdir -p "$USER_THEMES/$slug"
+    cp "$OMARCHY/themes/$slug/colors.toml" "$target"
+  fi
+  echo "$target"
+}
+
+edit_keys() {
+  python3 - "$@" <<'PY'
+import re
+import sys
+
+path, *pairs = sys.argv[1:]
+with open(path) as handle:
+    text = handle.read()
+
+# Anchor inserts above the palette block so the border sits with the other
+# structural keys, matching how stock themes such as hackerman lay it out.
+anchor = re.compile(r'^red\s*=', re.M)
+
+for i in range(0, len(pairs), 2):
+    key, value = pairs[i], pairs[i + 1]
+    line = f'{key} = "{value}"'
+    existing = re.compile(rf'^{re.escape(key)}\s*=.*$', re.M)
+    if existing.search(text):
+        text = existing.sub(line, text, count=1) if value else existing.sub('', text, count=1)
+        continue
+    if not value:
+        continue
+    match = anchor.search(text)
+    text = (text[:match.start()] + line + '\n\n' + text[match.start():]) if match \
+        else text.rstrip('\n') + '\n' + line + '\n'
+
+# Removals can leave a blank run behind; keep the file tidy either way.
+text = re.sub(r'\n{3,}', '\n\n', text).strip('\n') + '\n'
+with open(path, 'w') as handle:
+    handle.write(text)
+PY
+}
+
+read_key() {
+  python3 - "$1" "$2" <<'PY'
+import re
+import sys
+
+path, key = sys.argv[1], sys.argv[2]
+try:
+    with open(path) as handle:
+        text = handle.read()
+except OSError:
+    print('')
+    sys.exit(0)
+match = re.search(rf'^{re.escape(key)}\s*=\s*"([^"]*)"', text, re.M)
+print(match.group(1) if match else '')
+PY
+}
+
+apply_theme() {
+  omarchy theme set "$1" >/dev/null
+}
+
+cmd_show() {
+  local slug source active inactive
+  slug=$(current_slug)
+  source=$(source_colors "$slug")
+  active=$(read_key "$source" hyprland_active_border)
+  inactive=$(read_key "$source" hyprland_inactive_border)
+
+  python3 - "$slug" "$source" "$active" "$inactive" "$DEFAULT_INACTIVE" "$USER_THEMES" <<'PY'
+import json
+import re
+import sys
+
+slug, source, active, inactive, default_inactive, user_themes = sys.argv[1:7]
+
+palette = {}
+with open(source) as handle:
+    for line in handle:
+        match = re.match(r'^(\w+)\s*=\s*"([^"]*)"', line.strip())
+        if match:
+            palette[match.group(1)] = match.group(2)
+
+print(json.dumps({
+    "slug": slug,
+    "name": re.sub(r'(^|-)([a-z])', lambda m: m.group(1) + m.group(2).upper(), slug).replace('-', ' '),
+    "editable": source.startswith(user_themes),
+    "path": source,
+    # An unset border falls back the way the theme template does, so the app
+    # opens showing what is really on screen.
+    "active": active or palette.get("accent", "#ffffff"),
+    "inactive": inactive or default_inactive,
+    "activeSet": bool(active),
+    "inactiveSet": bool(inactive),
+    "palette": palette,
+}))
+PY
+}
+
+cmd_set() {
+  local slug target active="" inactive="" have_active=false have_inactive=false
+
+  while (($#)); do
+    case $1 in
+    --active) active=${2:-}; have_active=true; shift 2 ;;
+    --inactive) inactive=${2:-}; have_inactive=true; shift 2 ;;
+    *) die "unknown option '$1'" ;;
+    esac
+  done
+
+  $have_active || $have_inactive || die "set needs --active and/or --inactive"
+
+  slug=$(current_slug)
+  target=$(writable_colors "$slug")
+
+  local -a edits=()
+  $have_active && edits+=(hyprland_active_border "$active")
+  $have_inactive && edits+=(hyprland_inactive_border "$inactive")
+
+  edit_keys "$target" "${edits[@]}"
+  apply_theme "$slug"
+  echo "$target"
+}
+
+cmd_reset() {
+  local slug target scope=${1:---all}
+
+  slug=$(current_slug)
+  # Nothing to reset if the theme was never overlaid.
+  [[ -f $USER_THEMES/$slug/colors.toml ]] || { apply_theme "$slug"; return 0; }
+  target="$USER_THEMES/$slug/colors.toml"
+
+  case $scope in
+  --active) edit_keys "$target" hyprland_active_border "" ;;
+  --inactive) edit_keys "$target" hyprland_inactive_border "" ;;
+  --all) edit_keys "$target" hyprland_active_border "" hyprland_inactive_border "" ;;
+  *) die "unknown scope '$scope'" ;;
+  esac
+
+  apply_theme "$slug"
+}
+
+case ${1:-} in
+show) shift; cmd_show "$@" ;;
+set) shift; cmd_set "$@" ;;
+reset) shift; cmd_reset "$@" ;;
+*)
+  cat >&2 <<'USAGE'
+Usage:
+  omaborder-theme show
+  omaborder-theme set --active <spec> [--inactive <spec>]
+  omaborder-theme reset [--active|--inactive|--all]
+
+<spec> is a Hyprland color or gradient, e.g.
+  "rgba(7aa2f7ff)"
+  "rgba(33ccffee) rgba(00ff99ee) 45deg"
+USAGE
+  exit 1
+  ;;
+esac

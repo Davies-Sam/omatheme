@@ -1,0 +1,9 @@
+#!/bin/bash
+
+# Launch (or focus) the window border designer.
+#
+# Quickshell hardcodes the Wayland app-id `org.quickshell` for every instance,
+# so the window is identified by title instead -- both here and in the
+# Hyprland float rule.
+
+exec omarchy-launch-or-focus "Omaborder" "uwsm-app -- qs -c omaborder -n"
