@@ -119,12 +119,16 @@ cmd_show() {
   active=$(read_key "$source" hyprland_active_border)
   inactive=$(read_key "$source" hyprland_inactive_border)
 
-  python3 - "$slug" "$source" "$active" "$inactive" "$DEFAULT_INACTIVE" "$USER_THEMES" <<'PY'
+  local font
+  font=$(omarchy font current 2>/dev/null || true)
+
+  python3 - "$slug" "$source" "$active" "$inactive" "$DEFAULT_INACTIVE" "$USER_THEMES" "$font" <<'PY'
 import json
 import re
 import sys
 
 slug, source, active, inactive, default_inactive, user_themes = sys.argv[1:7]
+font = sys.argv[7] if len(sys.argv) > 7 else ""
 
 palette = {}
 with open(source) as handle:
@@ -145,6 +149,8 @@ print(json.dumps({
     "activeSet": bool(active),
     "inactiveSet": bool(inactive),
     "palette": palette,
+    # The app paints itself in the desktop's configured font, not a guess.
+    "font": font,
 }))
 PY
 }

@@ -25,5 +25,7 @@ QtObject {
 
   readonly property int radius: 8
   readonly property int gap: 14
-  readonly property string fontFamily: "CaskaydiaMono Nerd Font"
+  // Set from `omarchy font current` so the app matches the rest of the
+  // desktop rather than pinning a family that may not even be installed.
+  property string fontFamily: "monospace"
 }

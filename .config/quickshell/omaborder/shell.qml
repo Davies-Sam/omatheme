@@ -115,6 +115,7 @@ ShellRoot {
     try {
       var state = JSON.parse(json)
       Theme.colors = state.palette || ({})
+      if (state.font) Theme.fontFamily = state.font
       root.themeName = state.name || "Unknown"
       root.themeEditable = state.editable !== false
       root.active = parseSpec(state.active, root.active)
