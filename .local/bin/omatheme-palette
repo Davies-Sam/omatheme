@@ -64,10 +64,16 @@ import sys
 slug, source, user_themes, omarchy = sys.argv[1:5]
 
 colors = {}
+mode = "dark"
 with open(source) as handle:
     for line in handle:
-        match = re.match(r'^(\w+)\s*=\s*"(#[0-9a-fA-F]{6,8})"', line.strip())
-        if match and match.group(1) != 'mode' and not match.group(1).startswith('hyprland_'):
+        stripped = line.strip()
+        mode_match = re.match(r'^mode\s*=\s*"(light|dark)"', stripped)
+        if mode_match:
+            mode = mode_match.group(1)
+            continue
+        match = re.match(r'^(\w+)\s*=\s*"(#[0-9a-fA-F]{6,8})"', stripped)
+        if match and not match.group(1).startswith('hyprland_'):
             colors[match.group(1)] = match.group(2)
 
 print(json.dumps({
@@ -75,6 +81,7 @@ print(json.dumps({
     "editable": source.startswith(user_themes),
     # Whether `reset` has a stock copy to fall back on.
     "stock": os.path.isfile(os.path.join(omarchy, "themes", slug, "colors.toml")),
+    "mode": mode,
     "colors": colors,
 }))
 PY

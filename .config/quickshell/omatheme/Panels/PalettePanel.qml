@@ -23,6 +23,7 @@ ColumnLayout {
   property var keys: []
   property string selected: ""
   property bool hasStock: false
+  property string mode: "dark"
 
   // `edits` is only ever replaced wholesale, so this re-evaluates on every
   // change without a hand-synchronized counter to drift out of step.
@@ -58,6 +59,7 @@ ColumnLayout {
       root.colors = state.colors || ({})
       root.keys = Object.keys(root.colors)
       root.hasStock = state.stock === true
+      root.mode = state.mode === "light" ? "light" : "dark"
       root.edits = ({})
       if (root.keys.indexOf(root.selected) < 0)
         root.selected = root.keys.length > 0 ? root.keys[0] : ""
@@ -139,6 +141,14 @@ ColumnLayout {
     root.edits = ({})
   }
 
+  // Mode is a theme regeneration like Preview, not a live toggle; it goes
+  // through the applier queue and the control re-reads the real value on
+  // exit.
+  function setMode(value) {
+    if (value === root.mode) return
+    runApplier(["omatheme-palette", "mode", value])
+  }
+
   Component.onCompleted: loader.running = true
 
   // ------------------------------------------------------------------- ui
@@ -204,6 +214,25 @@ ColumnLayout {
   }
 
   Item { Layout.fillHeight: true }
+
+  RowLayout {
+    Layout.fillWidth: true
+    spacing: 8
+
+    Text {
+      text: "Mode"
+      color: Theme.dim
+      font.family: Theme.fontFamily
+      font.pixelSize: Theme.size(11)
+    }
+
+    Segmented {
+      Layout.fillWidth: true
+      options: [{ key: "dark", label: "Dark" }, { key: "light", label: "Light" }]
+      current: root.mode
+      onSelected: key => root.setMode(key)
+    }
+  }
 
   RowLayout {
     Layout.fillWidth: true

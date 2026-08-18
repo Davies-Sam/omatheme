@@ -159,7 +159,7 @@ switching UX (SUPER+CTRL+SPACE, `bg next`) is Omarchy's and stays out.
       **Done when:** flipping mode on a fork survives a round trip
       byte-identically and `gsettings get org.gnome.desktop.interface
       color-scheme` follows after apply.
-- [ ] **2b. Mode control in the Palette panel.** A two-option Segmented
+- [x] **2b. Mode control in the Palette panel.** A two-option Segmented
       (Dark / Light) near the fork row. Applying goes through the helper —
       it is a theme regeneration, so it belongs with Preview-style actions,
       not live toggling.
