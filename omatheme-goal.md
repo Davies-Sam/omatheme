@@ -221,7 +221,7 @@ the wrong face in Omarchy's theme switcher forever.
 The authoring accelerator: start a theme from an image instead of from an
 existing palette.
 
-- [ ] **6a. `generate` on `omatheme-palette`.** `generate <image>` extracts
+- [x] **6a. `generate` on `omatheme-palette`.** `generate <image>` extracts
       a candidate palette with magick (quantize, then assign roles:
       backgrounds from the darkest/most common tones, foregrounds from the
       lightest, accent from the most saturated mid-tone, the eight named

@@ -171,6 +171,203 @@ cmd_fork() {
   echo "$target"
 }
 
+# Generate a candidate palette from an image. ImageMagick quantizes the
+# image to a weighted histogram; the role assignment is heuristic: the most
+# common dark (or light) tone anchors the backgrounds, the most legible
+# opposite tone the foregrounds, the most saturated mid-tone becomes accent,
+# the eight named colors are nearest-matched by hue with synthesized
+# fallbacks, brights are lightened derivatives, and mode comes from the
+# weighted luminance. Prints JSON only; --apply writes the keys that exist
+# in the theme through the normal edit path and applies.
+generate_json() {
+  python3 - "$1" <<'PY'
+import colorsys
+import json
+import re
+import subprocess
+import sys
+
+# A heredoc script occupies stdin, so the histogram cannot be piped in;
+# run the quantization from here instead.
+hist = subprocess.run(
+    ["magick", sys.argv[1], "-resize", "128x128!", "-colors", "64",
+     "-depth", "8", "-format", "%c", "histogram:info:-"],
+    capture_output=True, text=True, check=True).stdout
+
+colors = []
+for line in hist.splitlines():
+    match = re.search(r'^\s*(\d+):\s*\(\s*(\d+),\s*(\d+),\s*(\d+)', line)
+    if match:
+        count, r, g, b = (int(x) for x in match.groups())
+        colors.append((count, r / 255, g / 255, b / 255))
+
+if not colors:
+    print("no colors extracted from image", file=sys.stderr)
+    sys.exit(1)
+
+total = sum(c[0] for c in colors)
+
+def luma(r, g, b):
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+def rel_lum(r, g, b):
+    lin = [v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4 for v in (r, g, b)]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+def contrast(a, b):
+    la, lb = rel_lum(*a), rel_lum(*b)
+    return (max(la, lb) + 0.05) / (min(la, lb) + 0.05)
+
+def hex_of(rgb):
+    return "#%02x%02x%02x" % tuple(round(max(0, min(1, v)) * 255) for v in rgb)
+
+def hsv_of(rgb):
+    return colorsys.rgb_to_hsv(*rgb)
+
+def rgb_of(h, s, v):
+    return colorsys.hsv_to_rgb(h % 1.0, max(0, min(1, s)), max(0, min(1, v)))
+
+def mix(a, b, t):
+    return tuple(a[i] * (1 - t) + b[i] * t for i in range(3))
+
+def scale_v(rgb, f, add=0.0):
+    h, s, v = hsv_of(rgb)
+    return rgb_of(h, s, v * f + add)
+
+avg = sum(c * luma(r, g, b) for c, r, g, b in colors) / total
+mode = "dark" if avg < 0.5 else "light"
+dark = mode == "dark"
+
+def pick(cands, key):
+    return max(cands, key=key) if cands else None
+
+# Backgrounds anchor on the most common tone from the image's own end of
+# the range; foregrounds on the most common legible opposite tone.
+if dark:
+    bgs = [c for c in colors if luma(*c[1:]) < 0.30]
+    fgs = [c for c in colors if luma(*c[1:]) > 0.60]
+else:
+    bgs = [c for c in colors if luma(*c[1:]) > 0.70]
+    fgs = [c for c in colors if luma(*c[1:]) < 0.40]
+
+bg = pick(bgs, lambda c: c[0])
+bg = bg[1:] if bg else ((0.10, 0.11, 0.15) if dark else (0.93, 0.92, 0.90))
+fg = pick(fgs, lambda c: c[0])
+fg = fg[1:] if fg else ((0.80, 0.82, 0.88) if dark else (0.15, 0.15, 0.18))
+
+# Legibility is non-negotiable: push the foreground away from the
+# background until it reads.
+step = 0
+while contrast(fg, bg) < 4.5 and step < 20:
+    fg = scale_v(fg, 1.15, 0.02) if dark else scale_v(fg, 0.82)
+    step += 1
+
+sat_pool = [c for c in colors
+            if hsv_of(c[1:])[1] > 0.35 and 0.20 < luma(*c[1:]) < 0.80]
+acc = pick(sat_pool, lambda c: hsv_of(c[1:])[1] * (c[0] ** 0.5))
+accent = acc[1:] if acc else rgb_of(0.6, 0.55, 0.75 if dark else 0.55)
+step = 0
+while contrast(accent, bg) < 3 and step < 20:
+    accent = scale_v(accent, 1.12, 0.02) if dark else scale_v(accent, 0.85)
+    step += 1
+
+# The eight named colors: nearest extracted hue wins, clamped into a
+# readable band; otherwise synthesized at the target hue with the image's
+# general saturation so the set still feels of a piece.
+avg_sat = sum(c[0] * hsv_of(c[1:])[1] for c in colors) / total
+base_s = max(0.40, min(0.75, avg_sat * 1.6 + 0.25))
+base_v = (0.72 if dark else 0.52)
+
+def hue_dist(a, b):
+    d = abs(a - b)
+    return min(d, 1 - d)
+
+def named(target_deg, v_range, s_range):
+    target = target_deg / 360
+    cands = []
+    for count, r, g, b in colors:
+        h, s, v = hsv_of((r, g, b))
+        if s > 0.30 and 0.15 < v < 0.95 and hue_dist(h, target) < 40 / 360:
+            cands.append((count / (1 + hue_dist(h, target) * 20), h))
+    h = max(cands)[1] if cands else target
+    s = max(s_range[0], min(s_range[1], base_s))
+    v = max(v_range[0], min(v_range[1], base_v))
+    return rgb_of(h, s, v)
+
+v_named = (0.55, 0.85) if dark else (0.35, 0.65)
+s_named = (0.35, 0.90)
+names = {
+    "red": named(0, v_named, s_named),
+    "orange": named(30, v_named, s_named),
+    "yellow": named(50, v_named, s_named),
+    "green": named(120, v_named, s_named),
+    "cyan": named(185, v_named, s_named),
+    "blue": named(220, v_named, s_named),
+    "magenta": named(300, v_named, s_named),
+    "brown": named(28, (0.30, 0.55), (0.30, 0.60)),
+}
+
+def brighten(rgb):
+    h, s, v = hsv_of(rgb)
+    return rgb_of(h, max(0, s - 0.05), min(1, v + 0.15))
+
+out = {"accent": accent,
+       "selection": mix(accent, bg, 0.65),
+       "muted": mix(fg, bg, 0.65),
+       "background": bg,
+       "dark_background": scale_v(bg, 0.82) if dark else scale_v(bg, 0.94),
+       "darker_background": scale_v(bg, 0.62) if dark else scale_v(bg, 0.88),
+       "lighter_background": scale_v(bg, 1.45, 0.04) if dark else scale_v(bg, 1.03, 0.02),
+       "foreground": fg,
+       "dark_foreground": mix(fg, bg, 0.55),
+       "light_foreground": mix(fg, bg, 0.15),
+       "bright_foreground": brighten(fg)}
+out.update(names)
+for key in ("red", "yellow", "green", "cyan", "blue", "magenta"):
+    out["bright_" + key] = brighten(out[key])
+
+print(json.dumps({"mode": mode,
+                  "colors": {k: hex_of(v) for k, v in out.items()}}))
+PY
+}
+
+cmd_generate() {
+  local image=${1:-} apply=no
+  [[ $image ]] || die "generate needs an image path"
+  [[ -f $image ]] || die "no such image '$image'"
+  [[ ${2:-} == --apply ]] && apply=yes
+
+  local json
+  json=$(generate_json "$image")
+
+  if [[ $apply == no ]]; then
+    echo "$json"
+    return 0
+  fi
+
+  local slug target
+  slug=$(current_slug)
+  target=$(writable_colors "$slug")
+
+  # Only keys the theme actually defines go through the edit path; the
+  # palette edits what a theme has, it does not grow it.
+  local -a edits=()
+  while IFS=$'\t' read -r key value; do
+    grep -q "^${key}\s*=" "$target" && edits+=("$key" "$value")
+  done < <(echo "$json" | python3 -c '
+import json, sys
+data = json.load(sys.stdin)
+for key, value in data["colors"].items():
+    print(f"{key}\t{value}")
+')
+  ((${#edits[@]})) || die "none of the generated keys exist in this theme"
+
+  edit_keys "$target" "${edits[@]}"
+  edit_keys "$target" mode "$(echo "$json" | python3 -c 'import json,sys; print(json.load(sys.stdin)["mode"])')"
+  apply_theme "$slug"
+  echo "$json"
+}
+
 # `mode` is not a palette color -- cmd_set refuses it -- but flipping a fork
 # from dark to light is theme authoring, so it gets its own verb with the
 # same surgical-edit discipline. It drives GTK's prefer-dark and friends
@@ -195,6 +392,7 @@ show) shift; cmd_show "$@" ;;
 set) shift; cmd_set "$@" ;;
 reset) shift; cmd_reset "$@" ;;
 mode) shift; cmd_mode "$@" ;;
+generate) shift; cmd_generate "$@" ;;
 fork) shift; cmd_fork "$@" ;;
 *)
   cat >&2 <<'USAGE'
@@ -203,6 +401,7 @@ Usage:
   omatheme-palette set --<key> <#rrggbb>...
   omatheme-palette reset [--<key>...|--all]
   omatheme-palette mode [light|dark]
+  omatheme-palette generate <image> [--apply]
   omatheme-palette fork <new-slug>
 
 Keys are the color entries of the current theme's colors.toml, e.g.
