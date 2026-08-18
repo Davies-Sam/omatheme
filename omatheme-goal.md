@@ -164,7 +164,7 @@ the app a theme designer rather than a border tool.
       mocks vanish. Wrap panel content so it scrolls instead.
       **Done when:** at text scale 2.0 every control is reachable and the
       window still fits the screen. Restore the factor to `1.0`.
-- [ ] **3b. README.** Update the Omatheme section of `~/dotfiles/README.md`
+- [x] **3b. README.** Update the Omatheme section of `~/dotfiles/README.md`
       to describe the panels that now exist.
 
 ---
