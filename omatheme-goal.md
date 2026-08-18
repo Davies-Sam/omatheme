@@ -325,7 +325,7 @@ synchronization (see the milestone 3 facts above).
 
 ## Task 9 — Boot/unlock logo
 
-- [ ] **9a. `logo` on `omatheme-preview`.** Render the theme's name as a
+- [x] **9a. `logo` on `omatheme-preview`.** Render the theme's name as a
       wordmark: the desktop font (from `omatheme-state`), theme foreground
       on transparency, drawn by magick at a wide aspect (the 800x188 class),
       written to the fork's `unlock.png`. User themes only. Never run

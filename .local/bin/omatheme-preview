@@ -106,18 +106,52 @@ print(json.dumps(out))
 PY
 }
 
+# `logo` renders the theme's name as a wordmark for unlock.png -- the
+# Plymouth boot/unlock logo, the one theme asset with no template, so a
+# fork shows its parent's mark at boot forever unless replaced. Drawn in
+# the desktop font (bold face when fontconfig has one) with the theme's
+# foreground on transparency, into the stock themes' wide-aspect class.
+# Only the file is written: installing it is omarchy's job and needs root.
+cmd_logo() {
+  local slug dir name font file fg
+  slug=$(current_slug)
+  theme_owned "$slug" || die "theme '$slug' is a stock theme; fork it first (omatheme-palette fork <new-slug>)"
+  dir="$USER_THEMES/$slug"
+
+  # Same slug-to-name rule as omatheme-state: dashes to spaces, words
+  # capitalized.
+  name=$(python3 -c 'import re, sys
+print(re.sub(r"(^|-)([a-z])", lambda m: m.group(1) + m.group(2).upper(), sys.argv[1]).replace("-", " "))' "$slug")
+
+  font=$(omarchy font current 2>/dev/null || echo monospace)
+  file=$(fc-match -f '%{file}' "$font:style=Bold" 2>/dev/null)
+  [[ $file ]] || die "cannot resolve a font file for '$font'"
+
+  fg=$(grep -oP '^foreground\s*=\s*"\K[^"]*' "$(source_colors "$slug")" | head -1)
+  [[ $fg ]] || die "theme '$slug' has no foreground color"
+
+  magick -background none -fill "$fg" -font "$file" -pointsize 160 \
+    "label:$name" -trim +repage -resize 760x148 \
+    -gravity center -background none -extent 800x188 "$dir/unlock.png"
+  echo "$dir/unlock.png"
+}
+
 case ${1:-} in
 regen) shift; cmd_regen "$@" ;;
 show) shift; cmd_show "$@" ;;
+logo) shift; cmd_logo "$@" ;;
 *)
   cat >&2 <<'USAGE'
 Usage:
   omatheme-preview show
   omatheme-preview regen
+  omatheme-preview logo
 
 regen captures the current desktop and writes preview.png (1800x1012)
 and preview-unlock.png (1920x1080) into the current theme's directory.
-User-owned themes only -- fork a stock theme first.
+logo renders the theme's name as unlock.png (800x188), the Plymouth
+boot/unlock wordmark. User-owned themes only -- fork a stock theme
+first.
 USAGE
   exit 1
   ;;
