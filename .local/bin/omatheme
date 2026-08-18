@@ -6,4 +6,17 @@
 # so the window is identified by title instead -- both here and in the
 # Hyprland float rule.
 
+# Fail with names, not a blank window: qs draws the app, magick powers
+# palette generation and previews, jq feeds every panel's list/state JSON,
+# and omarchy applies themes.
+missing=()
+for dep in qs magick jq omarchy; do
+  command -v "$dep" >/dev/null || missing+=("$dep")
+done
+if ((${#missing[@]})); then
+  echo "omatheme: missing dependencies: ${missing[*]}" >&2
+  echo "omatheme: install them first (qs is quickshell, magick is imagemagick)" >&2
+  exit 1
+fi
+
 exec omarchy-launch-or-focus "Omatheme" "uwsm-app -- qs -c omatheme -n"

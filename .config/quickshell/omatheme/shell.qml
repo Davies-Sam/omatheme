@@ -103,6 +103,33 @@ ShellRoot {
   // exact size instead, the way omarchy-launch-about sizes the About window.
   Process { id: resizer }
 
+  // Quickshell's ScreenInfo knows nothing about the bar's reserved strip,
+  // so ask Hyprland for the real one instead of guessing an allowance: a
+  // guess high enough to be safe (the old fixed 70) costs the tallest
+  // panel its action row on a short screen. Re-probed on text scale
+  // changes, since the bar resizes with the font.
+  Process {
+    id: reservedProbe
+    command: ["hyprctl", "monitors", "-j"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        try {
+          const monitors = JSON.parse(text)
+          let top = 0
+          let bottom = 0
+          for (const monitor of monitors) {
+            top = Math.max(top, monitor.reserved[1])
+            bottom = Math.max(bottom, monitor.reserved[3])
+          }
+          window.reservedVertical = top + bottom
+        } catch (error) {
+          console.warn("omatheme: could not read the reserved area:", error)
+        }
+      }
+    }
+  }
+
   Timer {
     id: refit
     interval: 120
@@ -122,24 +149,34 @@ ShellRoot {
 
   Connections {
     target: Theme
-    function onTextScaleChanged() { refit.restart() }
+    function onTextScaleChanged() {
+      reservedProbe.running = true
+      refit.restart()
+    }
   }
 
-  Component.onCompleted: { session.running = true; scaleProbe.running = true }
+  Component.onCompleted: {
+    session.running = true
+    scaleProbe.running = true
+    reservedProbe.running = true
+  }
 
   // ------------------------------------------------------------------- ui
   FloatingWindow {
     id: window
 
+    // Cap growth to the screen: the bar's true reserved strip (see
+    // reservedProbe; the pre-probe fallback matches the old guess) plus a
+    // scale-aware breathing margin so the float never kisses an edge.
+    property int reservedVertical: Theme.size(46)
+
     title: "Omatheme"
     color: Theme.background
 
-    // Cap growth to the screen. Quickshell's ScreenInfo knows nothing about
-    // the bar's reserved strip, so leave a scale-aware allowance for it --
-    // otherwise a large text scale grows the window under the bar and off
-    // the bottom of the display.
     readonly property int roomWidth: screen ? screen.width - Theme.size(40) : Theme.size(460)
-    readonly property int roomHeight: screen ? screen.height - Theme.size(70) : Theme.size(566)
+    readonly property int roomHeight: screen
+      ? screen.height - reservedVertical - Theme.size(24)
+      : Theme.size(566)
 
     implicitWidth: Math.min(Theme.size(460), roomWidth)
 

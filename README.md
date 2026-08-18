@@ -33,6 +33,11 @@ unsaved edits alive:
   Palette panel as pending edits — nothing touches disk until you judge the
   swatches and press Preview.
 
+|                                   |                                   |
+| :-------------------------------: | :-------------------------------: |
+|  ![Border panel](docs/border.png) |  ![Window panel](docs/window.png) |
+| ![Palette panel](docs/palette.png) | ![Backgrounds panel](docs/backgrounds.png) |
+
 Editing a stock theme never touches `/usr/share/omarchy`: writes land in a
 user overlay under `~/.config/omarchy/themes/<slug>/`, which is Omarchy's
 documented override mechanism. The window scales with
