@@ -58,7 +58,16 @@ ColumnLayout {
 
   function applyState(json) {
     try {
-      root.values = JSON.parse(json)
+      var state = JSON.parse(json)
+      // Refuse a partial or non-numeric reply outright: one missing key
+      // would put slider handles at NaN and make apply() throw.
+      var next = {}
+      for (var key in root.values) {
+        var value = Number(state[key])
+        if (!isFinite(value)) throw new Error("bad or missing key '" + key + "'")
+        next[key] = value
+      }
+      root.values = next
       root.dirty = false
     } catch (error) {
       console.warn("omatheme: could not read window state:", error)

@@ -168,6 +168,9 @@ ShellRoot {
           Item { Layout.fillWidth: true }
 
           Rectangle {
+            // Theme names are arbitrary text (forks are user-named); cap and
+            // elide instead of letting a long one push past the window edge.
+            Layout.maximumWidth: Theme.size(200)
             implicitWidth: themeLabel.implicitWidth + Theme.size(18)
             implicitHeight: Theme.size(24)
             radius: Theme.radius
@@ -175,7 +178,13 @@ ShellRoot {
 
             Text {
               id: themeLabel
-              anchors.centerIn: parent
+              anchors.fill: parent
+              anchors.leftMargin: Theme.size(9)
+              anchors.rightMargin: Theme.size(9)
+              horizontalAlignment: Text.AlignHCenter
+              verticalAlignment: Text.AlignVCenter
+              elide: Text.ElideRight
+              textFormat: Text.PlainText
               text: Session.name
               color: Theme.accent
               font.family: Theme.fontFamily
@@ -215,19 +224,48 @@ ShellRoot {
 
           StackLayout {
             id: panelStack
+
+            // The panel actually showing, not the stack's implicit height:
+            // that is the tallest panel's, which would force every tab to
+            // scroll because one of them is tall. Reading `count` first is
+            // load-bearing -- itemAt() alone is a plain function call, so
+            // without a reactive dependency the binding would evaluate once
+            // against the not-yet-populated Repeater and stay null forever.
+            readonly property real currentImplicit: {
+              if (panelRepeater.count === 0) return 0
+              var loader = panelRepeater.itemAt(currentIndex)
+              if (!loader) return 0
+              return loader.item ? loader.item.implicitHeight : loader.implicitHeight
+            }
+            // Panels squeeze gracefully by up to this much -- the preview
+            // mocks give up height first -- and past it the content keeps
+            // its height and scrolls. A fixed floor instead of the slack
+            // would cap contentHeight and hide anything taller than the
+            // floor with no way to scroll to it.
+            readonly property real squeezeSlack: Theme.size(30)
+
             width: panelFlick.width
-            // Panels are allowed to squeeze a little -- the preview mocks
-            // give up height gracefully -- but below this floor controls
-            // start disappearing, so the stack stops shrinking there and the
-            // remainder scrolls instead.
-            height: Math.max(panelFlick.height, Theme.size(440))
+            height: Math.max(panelFlick.height, currentImplicit - squeezeSlack)
             currentIndex: Math.max(0, root.panels.findIndex(entry => entry.key === root.panel))
 
             Repeater {
+              id: panelRepeater
               model: root.panels
               Loader {
+                id: panelLoader
                 required property var modelData
                 source: modelData.source
+
+                // A panel file that fails to parse must not be a silent
+                // blank tab; the error itself only lands in Quickshell's log.
+                Text {
+                  anchors.centerIn: parent
+                  visible: panelLoader.status === Loader.Error
+                  text: "Failed to load " + panelLoader.modelData.source
+                  color: Theme.value("red", "#f7768e")
+                  font.family: Theme.fontFamily
+                  font.pixelSize: Theme.size(12)
+                }
               }
             }
           }

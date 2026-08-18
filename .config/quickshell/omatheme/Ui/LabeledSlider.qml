@@ -22,7 +22,11 @@ RowLayout {
     color: Theme.dim
     font.family: Theme.fontFamily
     font.pixelSize: Theme.size(11)
+    // The column is fixed; a label wider than it must elide rather than
+    // paint into the track.
+    elide: Text.ElideRight
     Layout.preferredWidth: Theme.size(34)
+    Layout.maximumWidth: Theme.size(34)
   }
 
   Item {
@@ -63,6 +67,9 @@ RowLayout {
     MouseArea {
       anchors.fill: parent
       cursorShape: Qt.PointingHandCursor
+      // Inside the panel Flickable a slightly diagonal drag would otherwise
+      // be stolen as a flick mid-gesture once the content scrolls.
+      preventStealing: true
 
       function commit(mouseX) {
         var ratio = Math.max(0, Math.min(1, (mouseX - handle.width / 2) / Math.max(1, track.width - handle.width)))

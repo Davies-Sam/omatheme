@@ -254,6 +254,9 @@ ColumnLayout {
   Text {
     Layout.fillWidth: true
     visible: root.forkError.length > 0
+    // Raw helper stderr: AutoText would sniff <tags> or & as styled text
+    // and mangle exactly the message a failing fork needs to show verbatim.
+    textFormat: Text.PlainText
     text: root.forkError
     color: Theme.value("red", "#f7768e")
     font.family: Theme.fontFamily
