@@ -160,7 +160,10 @@ For UI behavior, insert a `// TEMP TEST RIG` block of Timers into shell.qml
 that drives panel functions (`root.panel = ...`, `panelRepeater.itemAt(n)
 .item.someFunction(...)`), screenshot the stages, and **remove the rig
 before committing** — grep for TEMP before every commit. Kill instances by
-matching `^qs -c omatheme`, never a pattern that matches your own shell.
+matching `^(/usr/bin/)?qs -c omatheme` (the launcher's cmdline carries
+the full path, which `^qs` misses), never a pattern that matches your
+own shell — an unanchored `pkill -f 'qs -c omatheme'` kills the very
+script that contains those words.
 Anything that mutates the desktop must be restored and verified via
 `git status` in this repo (and in ~/dotfiles for looknfeel.lua) before the
 task is ticked.
@@ -385,7 +388,7 @@ session (or a loop) can verify without reinventing it.
 
 ## Task 12 — Ship the tool
 
-- [ ] **12a. Style backlog.** Clear the ~89-item pre-existing QML review
+- [x] **12a. Style backlog.** Clear the ~89-item pre-existing QML review
       backlog (ORD-1 ordering, `var`/`==`, …) with the qt-qml-review lint
       script until the repo lints clean or each remaining item is
       individually justified in the commit message. Rerun `tests/run` and a
