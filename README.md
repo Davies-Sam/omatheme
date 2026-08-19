@@ -89,7 +89,9 @@ omatheme-publish --push git@github.com:you/omarchy-my-new-theme-theme.git
 ## Install
 
 Omatheme is an [Omarchy shell plugin](https://learn.omacom.io/2/the-omarchy-manual/32-shell-plugins)
-— it runs as a panel inside the `omarchy-shell` process.
+— it runs as a panel inside the `omarchy-shell` process. It's listed on
+[omarchyplugins.com](https://omarchyplugins.com/plugin.html?id=davies-sam.omatheme),
+the community plugin directory.
 
 ```bash
 omarchy plugin add https://github.com/Davies-Sam/omatheme.git --enable
